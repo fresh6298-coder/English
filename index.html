@@ -1,6 +1,12 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>매일 영어 3문장 · AI 첨삭 & 발음</title>
+<meta name="theme-color" content="#2a78d6" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="영어 3문장" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon-192.png" />
 
 <style>
   :root {
@@ -161,6 +167,17 @@
   }
   .speak-btn:hover { border-color: var(--accent); color: var(--accent); }
   .speak-btn.playing { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .mic-btn.listening { background: var(--critical); color: #fff; border-color: var(--critical); }
+
+  /* Speaking practice */
+  .practice { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); font-size: 13px; }
+  .practice .p-status { color: var(--muted); }
+  .practice .p-status.live { color: var(--critical); font-weight: 600; }
+  .practice .p-target { margin-top: 4px; }
+  .practice .p-target b.hit { color: var(--good); font-weight: 700; }
+  .practice .p-target b.miss { color: var(--critical); text-decoration: underline dotted; font-weight: 600; }
+  .practice .p-said { margin-top: 6px; color: var(--text-secondary); }
+  .practice .p-acc { font-weight: 700; }
 
   /* Chart */
   .chart-wrap { position: relative; width: 100%; overflow-x: auto; }
@@ -252,7 +269,10 @@
       <h1>🇬🇧 매일 영어 3문장</h1>
       <div class="sub">AI 첨삭 · 진척도 · 발음 · 주간 리포트 · 복습 노트</div>
     </div>
-    <button class="icon-btn" id="openSettings">⚙️ 설정</button>
+    <div style="display:flex; gap:8px">
+      <button class="icon-btn hide" id="installBtn">📲 설치</button>
+      <button class="icon-btn" id="openSettings">⚙️ 설정</button>
+    </div>
   </header>
 
   <div class="banner info" id="keyBanner">
@@ -410,6 +430,18 @@
     <div class="field">
       <label>음성</label>
       <select id="voiceSelect"><option value="">기본 (영어)</option></select>
+    </div>
+
+    <div class="sec-title">백업</div>
+    <div class="field">
+      <div class="row2">
+        <button class="btn secondary" id="exportBtn" style="flex:1; justify-content:center">⬇️ 내보내기</button>
+        <button class="btn secondary" id="importBtn" style="flex:1; justify-content:center">⬆️ 가져오기</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json,.json" class="hide" />
+      <div style="font-size:11.5px; color:var(--muted); margin-top:6px">
+        학습 기록·복습·설정을 파일로 저장/복원합니다. (API 키는 보안을 위해 제외)
+      </div>
     </div>
 
     <div class="modal-actions">
@@ -573,12 +605,86 @@ function speakButtonsHTML(text) {
   return `<div class="speak-row">
       <button class="speak-btn" data-text="${escapeAttr(text)}" data-mode="standard">🔈 표준발음 (또렷하게)</button>
       <button class="speak-btn" data-text="${escapeAttr(text)}" data-mode="linked">🎧 연음발음 (자연스럽게)</button>
+      <button class="speak-btn mic-btn" data-text="${escapeAttr(text)}">🎤 말하기 연습</button>
     </div>`;
 }
 function bindSpeakButtons(root) {
-  root.querySelectorAll('.speak-btn').forEach(b => {
+  root.querySelectorAll('.speak-btn:not(.mic-btn)').forEach(b => {
     b.onclick = () => speak(b.dataset.text, b.dataset.mode, b);
   });
+  root.querySelectorAll('.mic-btn').forEach(b => {
+    b.onclick = () => startPractice(b, b.dataset.text);
+  });
+}
+
+/* ---------- Speech recognition (말하기 연습) ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let activeRecog = null;
+function normWords(s) {
+  return (s || '').toLowerCase().replace(/[^a-z0-9\s']/g, ' ').split(/\s+/).filter(Boolean);
+}
+function lcsMatch(A, B) { // returns Set of matched indices in A
+  const n = A.length, m = B.length;
+  const dp = Array.from({length:n+1}, () => new Array(m+1).fill(0));
+  for (let i=n-1;i>=0;i--) for (let j=m-1;j>=0;j--)
+    dp[i][j] = A[i]===B[j] ? dp[i+1][j+1]+1 : Math.max(dp[i+1][j], dp[i][j+1]);
+  const matched = new Set(); let i=0,j=0;
+  while (i<n && j<m) {
+    if (A[i]===B[j]) { matched.add(i); i++; j++; }
+    else if (dp[i+1][j] >= dp[i][j+1]) i++; else j++;
+  }
+  return matched;
+}
+function ensurePanel(btn) {
+  const row = btn.closest('.speak-row');
+  let panel = row.nextElementSibling;
+  if (!panel || !panel.classList.contains('practice')) {
+    panel = document.createElement('div');
+    panel.className = 'practice';
+    row.parentNode.insertBefore(panel, row.nextSibling);
+  }
+  return panel;
+}
+function startPractice(btn, target) {
+  if (!SR) { toast('이 브라우저는 음성 인식을 지원하지 않아요 (Chrome/Edge 권장)'); return; }
+  if (activeRecog) { try { activeRecog.abort(); } catch {} activeRecog = null; }
+  const panel = ensurePanel(btn);
+  const recog = new SR();
+  activeRecog = recog;
+  recog.lang = 'en-US'; recog.interimResults = false; recog.maxAlternatives = 1;
+  btn.classList.add('listening'); btn.textContent = '⏹ 중지';
+  panel.innerHTML = `<span class="p-status live">🔴 듣는 중… 문장을 영어로 말해보세요</span>`;
+  btn.onclick = () => { try { recog.stop(); } catch {} };
+
+  recog.onresult = (e) => {
+    const said = e.results[0][0].transcript;
+    const A = normWords(target), B = normWords(said);
+    const matched = lcsMatch(A, B);
+    const acc = A.length ? Math.round(matched.size / A.length * 100) : 0;
+    const color = acc >= 85 ? 'var(--good)' : acc >= 60 ? 'var(--warning)' : 'var(--critical)';
+    const words = target.split(/(\s+)/);
+    let wi = 0;
+    const marked = words.map(w => {
+      if (!w.trim()) return w;
+      const hit = matched.has(wi); wi++;
+      return `<b class="${hit?'hit':'miss'}">${escapeHtml(w)}</b>`;
+    }).join('');
+    const msg = acc >= 85 ? '훌륭해요! 👏' : acc >= 60 ? '좋아요, 밑줄 부분을 다시 연습해 보세요.' : '천천히 또박또박 다시 말해볼까요?';
+    panel.innerHTML =
+      `<div class="p-status">정확도 <span class="p-acc" style="color:${color}">${acc}%</span> · ${msg}</div>
+       <div class="p-target">🎯 ${marked}</div>
+       <div class="p-said">🗣️ 인식된 말: “${escapeHtml(said)}”</div>`;
+  };
+  recog.onerror = (e) => {
+    panel.innerHTML = `<span class="p-status">인식 실패: ${e.error === 'not-allowed' ? '마이크 권한을 허용해 주세요.' : e.error === 'no-speech' ? '소리가 들리지 않았어요.' : escapeHtml(e.error)}</span>`;
+  };
+  recog.onend = () => {
+    btn.classList.remove('listening'); btn.textContent = '🎤 말하기 연습';
+    btn.onclick = () => startPractice(btn, target);
+    if (activeRecog === recog) activeRecog = null;
+  };
+  try { recog.start(); }
+  catch { panel.innerHTML = `<span class="p-status">잠시 후 다시 시도해 주세요.</span>`; }
 }
 
 /* ---------- result render ---------- */
@@ -1014,6 +1120,66 @@ function loadTodayIfExists() {
   }
 }
 
+/* ---------- backup: export / import ---------- */
+function exportData() {
+  const data = {
+    app: 'daily-english-3', version: 1, exportedAt: new Date().toISOString(),
+    history: getHistory(), reviewed: getReviewed(),
+    settings: {
+      goal: localStorage.getItem(LS.goal), remind: localStorage.getItem(LS.remind),
+      model: localStorage.getItem(LS.model), mode: localStorage.getItem(LS.mode),
+      voice: localStorage.getItem(LS.voice),
+    },
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `english-backup-${todayKey()}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast('백업 파일을 저장했어요 ✓');
+}
+function importData(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    let data;
+    try { data = JSON.parse(reader.result); } catch { toast('올바른 백업 파일이 아니에요'); return; }
+    if (!data || data.app !== 'daily-english-3' || typeof data.history !== 'object') {
+      toast('이 앱의 백업 파일이 아니에요'); return;
+    }
+    const curH = getHistory();
+    const impCount = Object.keys(data.history || {}).length;
+    if (!confirm(`백업에서 ${impCount}일치 기록을 불러올까요?\n같은 날짜는 백업 내용으로 덮어씁니다. (현재 기록과 병합)`)) return;
+    saveHistory({ ...curH, ...data.history });
+    if (data.reviewed) saveReviewed({ ...getReviewed(), ...data.reviewed });
+    const s = data.settings || {};
+    if (s.goal) localStorage.setItem(LS.goal, s.goal);
+    if (s.remind) localStorage.setItem(LS.remind, s.remind);
+    if (s.model) localStorage.setItem(LS.model, s.model);
+    if (s.mode) localStorage.setItem(LS.mode, s.mode);
+    if (s.voice != null) localStorage.setItem(LS.voice, s.voice);
+    closeModal(); renderInputs(); loadTodayIfExists(); refreshAll();
+    toast(`가져오기 완료 ✓ (${impCount}일치 병합)`);
+  };
+  reader.readAsText(file);
+}
+
+/* ---------- PWA install ---------- */
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault(); deferredPrompt = e;
+  const b = document.getElementById('installBtn'); if (b) b.classList.remove('hide');
+});
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  const b = document.getElementById('installBtn'); if (b) b.classList.add('hide');
+});
+function registerSW() {
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+}
+
 /* ---------- init ---------- */
 function init() {
   renderInputs();
@@ -1035,6 +1201,15 @@ function init() {
   $('#hideAnswers').onchange = renderReview;
   $('#hideDone').onchange = renderReview;
   $('#settingsModal').onclick = (e) => { if (e.target === $('#settingsModal')) closeModal(); };
+  $('#installBtn').onclick = async () => {
+    if (!deferredPrompt) { toast('브라우저 메뉴의 “홈 화면에 추가”로 설치할 수 있어요'); return; }
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null; $('#installBtn').classList.add('hide');
+  };
+  $('#exportBtn').onclick = exportData;
+  $('#importBtn').onclick = () => $('#importFile').click();
+  $('#importFile').onchange = (e) => { if (e.target.files[0]) importData(e.target.files[0]); e.target.value = ''; };
   $('#enableNotif').onclick = async () => {
     if (!('Notification' in window)) { toast('이 브라우저는 알림을 지원하지 않아요'); return; }
     const p = await Notification.requestPermission();
@@ -1061,6 +1236,7 @@ function init() {
   };
 
   window.addEventListener('resize', () => { clearTimeout(init._r); init._r = setTimeout(renderChart, 200); });
+  registerSW();
 }
 init();
 </script>
