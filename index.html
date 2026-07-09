@@ -1,0 +1,741 @@
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>매일 영어 3문장 · AI 첨삭 & 발음</title>
+
+<style>
+  :root {
+    --surface-1: #fcfcfb;
+    --page: #f9f9f7;
+    --card: #ffffff;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --baseline: #c3c2b7;
+    --series-1: #2a78d6;
+    --series-1-soft: #cde2fb;
+    --good: #006300;
+    --warning: #b06a00;
+    --critical: #c0392b;
+    --border: rgba(11, 11, 11, 0.10);
+    --accent: #2a78d6;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(11,11,11,.05), 0 8px 24px rgba(11,11,11,.05);
+    font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface-1: #1a1a19;
+      --page: #0d0d0d;
+      --card: #1f1f1e;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --muted: #898781;
+      --grid: #2c2c2a;
+      --baseline: #383835;
+      --series-1: #3987e5;
+      --series-1-soft: #16324f;
+      --good: #0ca30c;
+      --warning: #fab219;
+      --critical: #e66767;
+      --border: rgba(255, 255, 255, 0.10);
+      --accent: #3987e5;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.4);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 20px 16px 80px; }
+
+  header.top {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 8px;
+  }
+  header.top h1 { font-size: 20px; margin: 0; letter-spacing: -0.02em; }
+  header.top .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .icon-btn {
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--text-secondary); border-radius: 10px; padding: 8px 12px;
+    font-size: 13px; cursor: pointer; white-space: nowrap;
+  }
+  .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow);
+    margin-bottom: 16px;
+  }
+  .card h2 { font-size: 15px; margin: 0 0 12px; letter-spacing: -0.01em; }
+  .card h2 .tag { color: var(--muted); font-weight: 400; font-size: 12px; margin-left: 6px; }
+
+  /* Stat tiles */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  .tile {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 14px;
+  }
+  .tile .val { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+  .tile .lbl { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  @media (max-width: 560px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+
+  /* Writing inputs */
+  .prompt-box {
+    background: var(--series-1-soft); border-radius: 10px; padding: 10px 12px;
+    font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px; justify-content: space-between;
+  }
+  .prompt-box b { color: var(--accent); }
+  .prompt-box button {
+    background: transparent; border: none; color: var(--accent);
+    cursor: pointer; font-size: 12px; text-decoration: underline;
+  }
+  .sentence-row { margin-bottom: 12px; }
+  .sentence-row label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+  textarea.sent {
+    width: 100%; resize: vertical; min-height: 46px; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 10px; font: inherit;
+    background: var(--surface-1); color: var(--text-primary);
+  }
+  textarea.sent:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+
+  .btn {
+    background: var(--accent); color: #fff; border: none; border-radius: 10px;
+    padding: 11px 18px; font-size: 14px; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .btn.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+
+  /* Result cards */
+  .result { border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 12px; background: var(--surface-1); }
+  .result .score-pill {
+    float: right; font-size: 12px; font-weight: 700; padding: 3px 10px;
+    border-radius: 999px; color: #fff;
+  }
+  .result .orig { color: var(--muted); font-size: 13px; text-decoration: line-through; text-decoration-color: var(--baseline); }
+  .result .corr { font-size: 16px; font-weight: 600; margin: 6px 0; }
+  .result .fb { font-size: 13.5px; color: var(--text-secondary); }
+  .result .fb ul { margin: 6px 0 0; padding-left: 18px; }
+  .result .fb li { margin-bottom: 3px; }
+  .diff-del { color: var(--critical); text-decoration: line-through; }
+  .diff-ins { color: var(--good); font-weight: 600; }
+  .linking {
+    margin-top: 10px; padding: 8px 10px; background: var(--card);
+    border: 1px dashed var(--border); border-radius: 8px; font-size: 13px;
+  }
+  .linking .lk-label { color: var(--muted); font-size: 11px; }
+  .speak-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .speak-btn {
+    background: var(--card); border: 1px solid var(--border); border-radius: 999px;
+    padding: 6px 12px; font-size: 12.5px; cursor: pointer; color: var(--text-secondary);
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .speak-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .speak-btn.playing { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* Chart */
+  .chart-wrap { position: relative; width: 100%; overflow-x: auto; }
+  svg.chart { display: block; width: 100%; height: 200px; }
+  .chart-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 40px 0; }
+  .tooltip {
+    position: absolute; pointer-events: none; background: var(--text-primary);
+    color: var(--page); font-size: 12px; padding: 5px 9px; border-radius: 8px;
+    transform: translate(-50%, -130%); white-space: nowrap; opacity: 0; transition: opacity .1s;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* History */
+  .hist-day { border-top: 1px solid var(--border); padding: 12px 0; }
+  .hist-day:first-child { border-top: none; }
+  .hist-day .hd { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+  .hist-day .hd .date { font-weight: 600; font-size: 14px; }
+  .hist-day .hd .meta { font-size: 12px; color: var(--muted); }
+  .hist-day .body { display: none; margin-top: 8px; }
+  .hist-day.open .body { display: block; }
+  .hist-sent { font-size: 13.5px; padding: 6px 0; border-top: 1px dashed var(--border); }
+  .hist-sent .c { font-weight: 600; }
+
+  /* Modal */
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none;
+    align-items: center; justify-content: center; padding: 16px; z-index: 50;
+  }
+  .modal-bg.show { display: flex; }
+  .modal { background: var(--card); border-radius: var(--radius); padding: 22px; max-width: 460px; width: 100%; box-shadow: var(--shadow); }
+  .modal h3 { margin: 0 0 4px; font-size: 17px; }
+  .modal p.hint { font-size: 12.5px; color: var(--muted); margin: 0 0 16px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; font-weight: 600; }
+  .field input, .field select {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px;
+    font: inherit; background: var(--surface-1); color: var(--text-primary);
+  }
+  .field a { color: var(--accent); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--text-primary); color: var(--page); padding: 10px 16px;
+    border-radius: 10px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 60;
+  }
+  .toast.show { opacity: 1; }
+  .spinner {
+    width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.4);
+    border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .banner {
+    background: var(--series-1-soft); color: var(--text-secondary); font-size: 13px;
+    padding: 10px 14px; border-radius: 10px; margin-bottom: 16px; display: none;
+  }
+  .banner.show { display: block; }
+  .banner a { color: var(--accent); cursor: pointer; font-weight: 600; }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>🇬🇧 매일 영어 3문장</h1>
+      <div class="sub">AI 첨삭 · 진척도 관리 · 표준/연음 발음</div>
+    </div>
+    <button class="icon-btn" id="openSettings">⚙️ 설정</button>
+  </header>
+
+  <div class="banner" id="keyBanner">
+    AI 첨삭을 사용하려면 Anthropic API 키가 필요해요.
+    <a id="bannerSettings">설정에서 키 입력하기 →</a>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="tile"><div class="val" id="statStreak">0</div><div class="lbl">연속 학습일 🔥</div></div>
+    <div class="tile"><div class="val" id="statTotal">0</div><div class="lbl">누적 문장</div></div>
+    <div class="tile"><div class="val" id="statDays">0</div><div class="lbl">학습한 날</div></div>
+    <div class="tile"><div class="val" id="statAvg">–</div><div class="lbl">평균 점수</div></div>
+  </div>
+
+  <!-- Today's writing -->
+  <div class="card">
+    <h2>오늘의 영작 <span class="tag" id="todayLabel"></span></h2>
+    <div class="prompt-box">
+      <div>💡 오늘의 주제: <b id="promptText">—</b></div>
+      <button id="newPrompt">다른 주제</button>
+    </div>
+    <div id="inputs"></div>
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <button class="btn" id="submitBtn"><span id="submitLabel">AI 첨삭받기</span></button>
+      <span style="font-size:12px; color:var(--muted)">빈 문장은 건너뜁니다</span>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="card" id="resultCard" style="display:none">
+    <h2>첨삭 결과 <span class="tag" id="overallScore"></span></h2>
+    <div id="results"></div>
+    <div id="overallFb" class="result" style="display:none"></div>
+  </div>
+
+  <!-- Progress -->
+  <div class="card">
+    <h2>진척도 <span class="tag">일별 평균 점수</span></h2>
+    <div class="chart-wrap" id="chartWrap">
+      <div class="chart-empty" id="chartEmpty">아직 기록이 없어요. 첫 영작을 완성해 보세요!</div>
+      <svg class="chart" id="chart" style="display:none"></svg>
+      <div class="tooltip" id="tip"></div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="card">
+    <h2>지난 기록</h2>
+    <div id="history"><div class="chart-empty">기록이 여기에 쌓입니다.</div></div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-bg" id="settingsModal">
+  <div class="modal">
+    <h3>설정</h3>
+    <p class="hint">API 키는 이 브라우저에만 저장되며 서버로 전송되지 않습니다.</p>
+    <div class="field">
+      <label>Anthropic API 키</label>
+      <input type="password" id="apiKeyInput" placeholder="sk-ant-..." autocomplete="off" />
+      <div style="font-size:11.5px; color:var(--muted); margin-top:4px">
+        키 발급: <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>
+      </div>
+    </div>
+    <div class="field">
+      <label>첨삭 모델</label>
+      <select id="modelSelect">
+        <option value="claude-sonnet-5">Claude Sonnet 5 (권장 · 정확한 첨삭)</option>
+        <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (빠르고 저렴)</option>
+        <option value="claude-opus-4-8">Claude Opus 4.8 (최고 품질)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>발음 음성</label>
+      <select id="voiceSelect"><option value="">기본 (영어)</option></select>
+    </div>
+    <div class="modal-actions">
+      <button class="icon-btn" id="clearData">기록 삭제</button>
+      <button class="btn secondary" id="closeSettings">닫기</button>
+      <button class="btn" id="saveSettings">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   매일 영어 3문장 — 로컬 단일 파일 앱
+   저장: localStorage / 발음: Web Speech API / 첨삭: Claude API
+   ============================================================ */
+
+const LS = {
+  key:   'elw_apikey',
+  model: 'elw_model',
+  voice: 'elw_voice',
+  hist:  'elw_history',   // { "YYYY-MM-DD": {date, entries:[...], overall_ko, avg} }
+};
+
+const PROMPTS = [
+  "오늘 있었던 가장 기억에 남는 일",
+  "요즘 가장 관심 있는 것",
+  "이번 주말 계획",
+  "최근에 본 영화나 드라마",
+  "내가 좋아하는 음식과 그 이유",
+  "오늘의 기분과 그 이유",
+  "가보고 싶은 여행지",
+  "요즘 배우고 있는 것",
+  "감사한 일 세 가지",
+  "내일 하고 싶은 일",
+  "최근에 만난 사람",
+  "나의 취미 소개",
+  "가장 좋아하는 계절",
+  "스트레스를 푸는 방법",
+  "올해 이루고 싶은 목표",
+];
+
+const $  = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
+
+/* ---------- state helpers ---------- */
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem(LS.hist)) || {}; }
+  catch { return {}; }
+}
+function saveHistory(h) { localStorage.setItem(LS.hist, JSON.stringify(h)); }
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function fmtDate(key) {
+  const [y,m,d] = key.split('-');
+  return `${y}. ${m}. ${d}.`;
+}
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+/* ---------- prompt of the day ---------- */
+function pickPrompt(random) {
+  const idx = random
+    ? Math.floor(Math.random() * PROMPTS.length)
+    : (new Date().getDate() + new Date().getMonth()) % PROMPTS.length;
+  $('#promptText').textContent = PROMPTS[idx];
+}
+
+/* ---------- render inputs ---------- */
+function renderInputs() {
+  const c = $('#inputs');
+  c.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const row = document.createElement('div');
+    row.className = 'sentence-row';
+    row.innerHTML = `<label>문장 ${i+1}</label>
+      <textarea class="sent" data-i="${i}" placeholder="Write in English..."></textarea>`;
+    c.appendChild(row);
+  }
+}
+
+/* ---------- score color ---------- */
+function scoreColor(s) {
+  if (s >= 85) return 'var(--good)';
+  if (s >= 65) return 'var(--warning)';
+  return 'var(--critical)';
+}
+
+/* ---------- inline diff (word-level, simple LCS) ---------- */
+function diffWords(a, b) {
+  const A = (a||'').split(/(\s+)/), B = (b||'').split(/(\s+)/);
+  const n = A.length, m = B.length;
+  const dp = Array.from({length:n+1}, () => new Array(m+1).fill(0));
+  for (let i=n-1;i>=0;i--) for (let j=m-1;j>=0;j--)
+    dp[i][j] = A[i]===B[j] ? dp[i+1][j+1]+1 : Math.max(dp[i+1][j], dp[i][j+1]);
+  let i=0,j=0,out='';
+  const esc = (s)=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  while (i<n && j<m) {
+    if (A[i]===B[j]) { out+=esc(A[i]); i++; j++; }
+    else if (dp[i+1][j] >= dp[i][j+1]) { if(A[i].trim())out+=`<span class="diff-del">${esc(A[i])}</span>`; else out+=esc(A[i]); i++; }
+    else { if(B[j].trim())out+=`<span class="diff-ins">${esc(B[j])}</span>`; else out+=esc(B[j]); j++; }
+  }
+  while (i<n){ if(A[i].trim())out+=`<span class="diff-del">${esc(A[i])}</span>`; else out+=esc(A[i]); i++; }
+  while (j<m){ if(B[j].trim())out+=`<span class="diff-ins">${esc(B[j])}</span>`; else out+=esc(B[j]); j++; }
+  return out;
+}
+
+/* ---------- Text-to-Speech ---------- */
+let voices = [];
+function loadVoices() {
+  voices = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang));
+  const sel = $('#voiceSelect');
+  const saved = localStorage.getItem(LS.voice) || '';
+  sel.innerHTML = '<option value="">기본 (영어)</option>' +
+    voices.map(v => `<option value="${v.name}">${v.name} (${v.lang})</option>`).join('');
+  sel.value = saved;
+}
+if ('speechSynthesis' in window) {
+  speechSynthesis.onvoiceschanged = loadVoices;
+  loadVoices();
+}
+function speak(text, mode, btn) {
+  if (!('speechSynthesis' in window)) { toast('이 브라우저는 음성 재생을 지원하지 않아요'); return; }
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-US';
+  const vname = localStorage.getItem(LS.voice);
+  const v = voices.find(x => x.name === vname);
+  if (v) u.voice = v;
+  // 표준발음: 또렷하고 천천히 / 연음발음: 자연스러운 속도로 연결
+  if (mode === 'standard') { u.rate = 0.7; u.pitch = 1.0; }
+  else { u.rate = 1.0; u.pitch = 1.0; }
+  if (btn) {
+    $$('.speak-btn.playing').forEach(b => b.classList.remove('playing'));
+    btn.classList.add('playing');
+    u.onend = u.onerror = () => btn.classList.remove('playing');
+  }
+  speechSynthesis.speak(u);
+}
+
+/* ---------- render one result ---------- */
+function resultHTML(r) {
+  const sc = Math.round(r.score ?? 0);
+  const corrList = (r.corrections || []).map(c =>
+    `<li><b>${escapeHtml(c.before||'')}</b> → <b style="color:var(--good)">${escapeHtml(c.after||'')}</b>${c.reason_ko ? ' — ' + escapeHtml(c.reason_ko) : ''}</li>`
+  ).join('');
+  const changed = (r.original||'').trim() !== (r.corrected||'').trim();
+  return `
+    <div class="result">
+      <span class="score-pill" style="background:${scoreColor(sc)}">${sc}점</span>
+      ${changed ? `<div class="orig">${escapeHtml(r.original||'')}</div>` : ''}
+      <div class="corr">${changed ? diffWords(r.original, r.corrected) : escapeHtml(r.corrected||'')}</div>
+      ${r.feedback_ko ? `<div class="fb">${escapeHtml(r.feedback_ko)}</div>` : ''}
+      ${corrList ? `<div class="fb"><ul>${corrList}</ul></div>` : ''}
+      ${r.linking_ko ? `<div class="linking"><span class="lk-label">🔗 연음 가이드</span><br>${escapeHtml(r.linking_ko)}</div>` : ''}
+      <div class="speak-row">
+        <button class="speak-btn" data-text="${escapeAttr(r.corrected||'')}" data-mode="standard">🔈 표준발음 (또렷하게)</button>
+        <button class="speak-btn" data-text="${escapeAttr(r.corrected||'')}" data-mode="linked">🎧 연음발음 (자연스럽게)</button>
+      </div>
+    </div>`;
+}
+function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escapeAttr(s){ return escapeHtml(s).replace(/"/g,'&quot;'); }
+
+function bindSpeakButtons(root) {
+  root.querySelectorAll('.speak-btn').forEach(b => {
+    b.onclick = () => speak(b.dataset.text, b.dataset.mode, b);
+  });
+}
+
+/* ---------- Claude API call ---------- */
+async function correctSentences(sentences, topic) {
+  const key = localStorage.getItem(LS.key);
+  const model = localStorage.getItem(LS.model) || 'claude-sonnet-5';
+  if (!key) throw new Error('NO_KEY');
+
+  const sys = `You are an encouraging English writing tutor for a Korean learner.
+For each sentence the student wrote, return corrections. Reply ONLY with valid JSON, no markdown fences.
+JSON schema:
+{
+ "results": [
+   {
+     "index": <number>,
+     "original": "<student's sentence, unchanged>",
+     "corrected": "<the most natural native-like English>",
+     "score": <0-100 naturalness/correctness>,
+     "corrections": [ {"before":"<wrong phrase>","after":"<fixed phrase>","reason_ko":"<short reason in Korean>"} ],
+     "feedback_ko": "<one or two sentences of friendly feedback in Korean>",
+     "linking_ko": "<pronunciation linking(연음) guide: show how words connect in natural speech, with a simple Korean phonetic hint. e.g. 'pick it up → 피키럽 (pick+it 연결)'>"
+   }
+ ],
+ "overall_ko": "<one short encouraging summary in Korean>"
+}
+If a sentence is already perfect, keep corrected = original, score high, corrections = [], and still give feedback_ko and linking_ko.`;
+
+  const userMsg = `Topic (optional): ${topic}\n\nSentences:\n` +
+    sentences.map((s, i) => `${i+1}. ${s}`).join('\n');
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 2000,
+      system: sys,
+      messages: [{ role: 'user', content: userMsg }],
+    }),
+  });
+
+  if (!res.ok) {
+    let detail = '';
+    try { const e = await res.json(); detail = e.error?.message || ''; } catch {}
+    if (res.status === 401) throw new Error('API 키가 올바르지 않아요. 설정을 확인해 주세요.');
+    throw new Error(`API 오류 (${res.status}) ${detail}`);
+  }
+  const data = await res.json();
+  const text = (data.content || []).map(c => c.text || '').join('');
+  const jsonStr = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
+  let parsed;
+  try { parsed = JSON.parse(jsonStr); }
+  catch { throw new Error('응답을 해석하지 못했어요. 다시 시도해 주세요.'); }
+  return parsed;
+}
+
+/* ---------- submit flow ---------- */
+async function onSubmit() {
+  const sentences = $$('.sent').map(t => t.value.trim());
+  const filled = sentences.map((s, i) => ({ s, i })).filter(x => x.s);
+  if (filled.length === 0) { toast('먼저 문장을 입력해 주세요'); return; }
+  if (!localStorage.getItem(LS.key)) { openModal(); toast('API 키를 먼저 입력해 주세요'); return; }
+
+  const btn = $('#submitBtn'), lbl = $('#submitLabel');
+  btn.disabled = true;
+  lbl.innerHTML = '<span class="spinner"></span> 첨삭 중...';
+
+  try {
+    const parsed = await correctSentences(filled.map(x => x.s), $('#promptText').textContent);
+    // normalize: map results back preserving original text
+    const results = (parsed.results || []).map((r, k) => ({
+      ...r,
+      original: r.original || filled[k]?.s || '',
+    }));
+    showResults(results, parsed.overall_ko);
+    persistToday(results, parsed.overall_ko, $('#promptText').textContent);
+    refreshAll();
+    $('#resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    if (e.message === 'NO_KEY') { openModal(); toast('API 키를 입력해 주세요'); }
+    else toast(e.message || '오류가 발생했어요');
+  } finally {
+    btn.disabled = false;
+    lbl.textContent = 'AI 첨삭받기';
+  }
+}
+
+function showResults(results, overall) {
+  const box = $('#results');
+  box.innerHTML = results.map(resultHTML).join('');
+  bindSpeakButtons(box);
+  const avg = results.length ? Math.round(results.reduce((a, r) => a + (r.score||0), 0) / results.length) : 0;
+  $('#overallScore').textContent = `평균 ${avg}점`;
+  const ofb = $('#overallFb');
+  if (overall) { ofb.style.display = 'block'; ofb.innerHTML = `<div class="fb">💬 ${escapeHtml(overall)}</div>`; }
+  else ofb.style.display = 'none';
+  $('#resultCard').style.display = 'block';
+}
+
+function persistToday(results, overall, topic) {
+  const h = getHistory();
+  const key = todayKey();
+  const avg = results.length ? Math.round(results.reduce((a, r) => a + (r.score||0), 0) / results.length) : 0;
+  h[key] = { date: key, topic, entries: results, overall_ko: overall || '', avg };
+  saveHistory(h);
+}
+
+/* ---------- stats & streak ---------- */
+function computeStreak(h) {
+  let streak = 0;
+  const d = new Date();
+  while (true) {
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (h[key]) { streak++; d.setDate(d.getDate() - 1); }
+    else break;
+  }
+  return streak;
+}
+function refreshStats() {
+  const h = getHistory();
+  const keys = Object.keys(h);
+  const totalSent = keys.reduce((a, k) => a + (h[k].entries?.length || 0), 0);
+  const allScores = keys.flatMap(k => (h[k].entries || []).map(e => e.score || 0));
+  const avg = allScores.length ? Math.round(allScores.reduce((a,b)=>a+b,0)/allScores.length) : null;
+  $('#statStreak').textContent = computeStreak(h);
+  $('#statTotal').textContent = totalSent;
+  $('#statDays').textContent = keys.length;
+  $('#statAvg').textContent = avg == null ? '–' : avg;
+}
+
+/* ---------- chart (single-series line, daily avg) ---------- */
+function renderChart() {
+  const h = getHistory();
+  const keys = Object.keys(h).sort();
+  const svg = $('#chart'), empty = $('#chartEmpty'), tip = $('#tip');
+  if (keys.length === 0) { svg.style.display = 'none'; empty.style.display = 'block'; return; }
+  empty.style.display = 'none'; svg.style.display = 'block';
+
+  const data = keys.map(k => ({ key: k, val: h[k].avg || 0 }));
+  const W = Math.max(svg.clientWidth || 700, data.length * 44);
+  const H = 200, padL = 34, padR = 14, padT = 16, padB = 28;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const maxY = 100, minY = 0;
+  const x = (i) => padL + (data.length === 1 ? plotW/2 : (i/(data.length-1))*plotW);
+  const y = (v) => padT + plotH - ((v-minY)/(maxY-minY))*plotH;
+
+  const css = getComputedStyle(document.documentElement);
+  const grid = css.getPropertyValue('--grid').trim();
+  const base = css.getPropertyValue('--baseline').trim();
+  const line = css.getPropertyValue('--series-1').trim();
+  const muted = css.getPropertyValue('--muted').trim();
+  const surf = css.getPropertyValue('--surface-1').trim();
+
+  let g = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">`;
+  // gridlines at 0/50/100
+  [0,50,100].forEach(v => {
+    g += `<line x1="${padL}" y1="${y(v)}" x2="${W-padR}" y2="${y(v)}" stroke="${v===0?base:grid}" stroke-width="1"/>`;
+    g += `<text x="${padL-6}" y="${y(v)+3}" text-anchor="end" font-size="10" fill="${muted}" font-family="system-ui">${v}</text>`;
+  });
+  // path
+  const dpath = data.map((d,i) => `${i===0?'M':'L'}${x(i).toFixed(1)},${y(d.val).toFixed(1)}`).join(' ');
+  g += `<path d="${dpath}" fill="none" stroke="${line}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  // markers
+  data.forEach((d,i) => {
+    g += `<circle class="pt" data-i="${i}" cx="${x(i).toFixed(1)}" cy="${y(d.val).toFixed(1)}" r="4.5" fill="${line}" stroke="${surf}" stroke-width="2"/>`;
+  });
+  // x labels (show few)
+  const step = Math.ceil(data.length / 6);
+  data.forEach((d,i) => {
+    if (i % step === 0 || i === data.length-1) {
+      const mmdd = d.key.slice(5).replace('-','/');
+      g += `<text x="${x(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="10" fill="${muted}" font-family="system-ui">${mmdd}</text>`;
+    }
+  });
+  g += `</svg>`;
+  svg.outerHTML = g;
+  const newSvg = $('#chart') || document.querySelector('.chart-wrap svg');
+  newSvg.id = 'chart'; newSvg.classList.add('chart');
+
+  // hover
+  newSvg.querySelectorAll('.pt').forEach(c => {
+    c.addEventListener('mouseenter', (e) => {
+      const i = +c.dataset.i;
+      tip.innerHTML = `${data[i].key.slice(5)} · <b>${data[i].val}점</b>`;
+      const rect = newSvg.getBoundingClientRect();
+      const wrapRect = $('#chartWrap').getBoundingClientRect();
+      const cx = c.getBoundingClientRect().left - wrapRect.left + c.getBoundingClientRect().width/2;
+      const cy = c.getBoundingClientRect().top - wrapRect.top;
+      tip.style.left = cx + 'px'; tip.style.top = cy + 'px'; tip.style.opacity = 1;
+    });
+    c.addEventListener('mouseleave', () => { tip.style.opacity = 0; });
+  });
+}
+
+/* ---------- history list ---------- */
+function renderHistory() {
+  const h = getHistory();
+  const keys = Object.keys(h).sort().reverse();
+  const box = $('#history');
+  if (keys.length === 0) { box.innerHTML = '<div class="chart-empty">기록이 여기에 쌓입니다.</div>'; return; }
+  box.innerHTML = keys.map(k => {
+    const day = h[k];
+    const sents = (day.entries || []).map(e =>
+      `<div class="hist-sent"><span class="c">${escapeHtml(e.corrected||'')}</span>
+        <span style="color:var(--muted)"> · ${Math.round(e.score||0)}점</span>
+        <div style="margin-top:4px"><button class="speak-btn" data-text="${escapeAttr(e.corrected||'')}" data-mode="standard">🔈 표준</button>
+        <button class="speak-btn" data-text="${escapeAttr(e.corrected||'')}" data-mode="linked">🎧 연음</button></div>
+      </div>`).join('');
+    return `<div class="hist-day">
+      <div class="hd"><span class="date">${fmtDate(k)}</span>
+        <span class="meta">${day.entries?.length||0}문장 · 평균 ${day.avg||0}점 ▾</span></div>
+      <div class="body">${sents || '<span style="color:var(--muted)">기록 없음</span>'}</div>
+    </div>`;
+  }).join('');
+  box.querySelectorAll('.hist-day .hd').forEach(hd => {
+    hd.onclick = () => hd.parentElement.classList.toggle('open');
+  });
+  bindSpeakButtons(box);
+}
+
+function refreshAll() { refreshStats(); renderChart(); renderHistory(); }
+
+/* ---------- settings modal ---------- */
+function openModal() {
+  $('#apiKeyInput').value = localStorage.getItem(LS.key) || '';
+  $('#modelSelect').value = localStorage.getItem(LS.model) || 'claude-sonnet-5';
+  $('#voiceSelect').value = localStorage.getItem(LS.voice) || '';
+  $('#settingsModal').classList.add('show');
+}
+function closeModal() { $('#settingsModal').classList.remove('show'); }
+
+function checkKeyBanner() {
+  $('#keyBanner').classList.toggle('show', !localStorage.getItem(LS.key));
+}
+
+/* ---------- load today's saved entry if exists ---------- */
+function loadTodayIfExists() {
+  const h = getHistory();
+  const day = h[todayKey()];
+  if (day && day.entries?.length) {
+    showResults(day.entries, day.overall_ko);
+    // prefill inputs with originals
+    const inputs = $$('.sent');
+    day.entries.forEach((e, i) => { if (inputs[i]) inputs[i].value = e.original || ''; });
+  }
+}
+
+/* ---------- init ---------- */
+function init() {
+  renderInputs();
+  pickPrompt(false);
+  $('#todayLabel').textContent = fmtDate(todayKey());
+  refreshAll();
+  loadTodayIfExists();
+  checkKeyBanner();
+
+  $('#submitBtn').onclick = onSubmit;
+  $('#newPrompt').onclick = () => pickPrompt(true);
+  $('#openSettings').onclick = openModal;
+  $('#bannerSettings').onclick = openModal;
+  $('#closeSettings').onclick = closeModal;
+  $('#settingsModal').onclick = (e) => { if (e.target === $('#settingsModal')) closeModal(); };
+  $('#saveSettings').onclick = () => {
+    localStorage.setItem(LS.key, $('#apiKeyInput').value.trim());
+    localStorage.setItem(LS.model, $('#modelSelect').value);
+    localStorage.setItem(LS.voice, $('#voiceSelect').value);
+    closeModal(); checkKeyBanner(); toast('저장되었어요 ✓');
+  };
+  $('#clearData').onclick = () => {
+    if (confirm('모든 학습 기록을 삭제할까요? 되돌릴 수 없습니다.')) {
+      localStorage.removeItem(LS.hist); closeModal(); refreshAll();
+      $('#resultCard').style.display = 'none'; toast('기록을 삭제했어요');
+    }
+  };
+
+  window.addEventListener('resize', () => { clearTimeout(init._r); init._r = setTimeout(renderChart, 200); });
+}
+init();
+</script>
