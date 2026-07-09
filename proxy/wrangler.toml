@@ -1,0 +1,15 @@
+# Cloudflare Worker 설정 파일
+# 배포: npm i -g wrangler && wrangler deploy
+name = "english-tutor-proxy"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# API 키는 코드/파일에 넣지 말고 아래 명령으로 등록하세요:
+#   wrangler secret put ANTHROPIC_API_KEY
+#
+# 선택 설정(고정 값). 필요하면 주석을 해제해서 사용하세요:
+# [vars]
+# ALLOW_ORIGIN = "https://내아이디.github.io"
+#
+# 접근 암호를 쓰려면(선택):
+#   wrangler secret put ACCESS_TOKEN
