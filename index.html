@@ -81,11 +81,18 @@
   .card h2 { font-size: 15px; margin: 0 0 12px; letter-spacing: -0.01em; display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
   .card h2 .tag { color: var(--muted); font-weight: 400; font-size: 12px; }
 
-  /* Tabs */
-  .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  /* Tabs (top menu bar, sticky) */
+  .tabs {
+    display: flex; gap: 6px; margin: 0 -16px 16px; flex-wrap: nowrap; overflow-x: auto;
+    position: sticky; top: 0; z-index: 40;
+    background: var(--page); padding: 10px 16px; border-bottom: 1px solid var(--border);
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
   .tab {
     background: var(--card); border: 1px solid var(--border); border-radius: 999px;
     padding: 7px 14px; font-size: 13px; cursor: pointer; color: var(--text-secondary);
+    white-space: nowrap; flex: 0 0 auto;
   }
   .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
   .tab .badge { display:inline-block; min-width:16px; padding:0 5px; margin-left:5px; font-size:11px;
@@ -285,10 +292,10 @@
 
   <div class="tabs">
     <div class="tab active" data-page="today">✍️ 오늘</div>
+    <div class="tab" data-page="listen">🎧 듣기 연습</div>
     <div class="tab" data-page="progress">📈 진척도</div>
     <div class="tab" data-page="report">📊 주간 리포트</div>
     <div class="tab" data-page="review">📒 복습 노트 <span class="badge hide" id="reviewBadge">0</span></div>
-    <div class="tab" data-page="listen">🎧 듣기 연습</div>
   </div>
 
   <!-- ===== TODAY ===== -->
