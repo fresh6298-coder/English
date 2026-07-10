@@ -288,6 +288,7 @@
     <div class="tab" data-page="progress">📈 진척도</div>
     <div class="tab" data-page="report">📊 주간 리포트</div>
     <div class="tab" data-page="review">📒 복습 노트 <span class="badge hide" id="reviewBadge">0</span></div>
+    <div class="tab" data-page="listen">🎧 듣기 연습</div>
   </div>
 
   <!-- ===== TODAY ===== -->
@@ -367,6 +368,39 @@
         <label class="chk"><input type="checkbox" id="hideDone"> 복습 완료 숨기기</label>
       </div>
       <div id="reviewList"><div class="empty-msg">첨삭을 받으면 틀린 표현이 여기에 모여요.</div></div>
+    </div>
+  </section>
+
+  <!-- ===== LISTENING (DICTATION) ===== -->
+  <section class="page" data-page="listen">
+    <div class="card">
+      <h2><span>딕테이션 (받아쓰기)</span> <span class="tag" id="listenLevelTag"></span></h2>
+      <p style="font-size:12.5px; color:var(--muted); margin:0 0 14px;">문장을 듣고 들리는 대로 영어로 타이핑해 보세요. 실제 대화 속도(연음)로 재생돼요.</p>
+      <div class="field">
+        <label>난이도</label>
+        <select id="listenLevel">
+          <option value="all">전체</option>
+          <option value="easy">초급</option>
+          <option value="mid">중급</option>
+          <option value="hard">고급</option>
+        </select>
+      </div>
+      <div class="speak-row" style="margin-top:10px">
+        <button class="btn" id="listenPlayBtn">🎧 듣기 (연음)</button>
+        <button id="listenSlowBtn">🐢 천천히 듣기</button>
+        <button id="listenNextBtn">🔀 다른 문장</button>
+      </div>
+      <input type="text" id="listenInput" placeholder="들리는 대로 영어로 입력하세요…" style="margin-top:12px; width:100%; box-sizing:border-box;">
+      <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;">
+        <button class="btn" id="listenCheckBtn">채점하기</button>
+        <span style="font-size:12px; color:var(--muted)">Enter로도 채점돼요</span>
+      </div>
+      <div id="listenResult"></div>
+      <div class="stats" style="margin-top:16px">
+        <div class="tile"><div class="val" id="listenCount">0</div><div class="lbl">이번 세션 문제 수</div></div>
+        <div class="tile"><div class="val" id="listenAvg">–</div><div class="lbl">평균 정확도</div></div>
+        <div class="tile"><div class="val" id="listenBest">–</div><div class="lbl">최고 정확도</div></div>
+      </div>
     </div>
   </section>
 </div>
@@ -513,6 +547,40 @@ const PROMPTS = [
   "올해 이루고 싶은 목표",
 ];
 
+// 딕테이션(받아쓰기) 문장 뱅크 — 연음/축약이 잘 드러나는 실제 회화 문장 위주
+const LISTEN_BANK = [
+  { level: 'easy', en: "I want to go home." },
+  { level: 'easy', en: "She is my best friend." },
+  { level: 'easy', en: "Can you help me out?" },
+  { level: 'easy', en: "I have to go now." },
+  { level: 'easy', en: "He likes to play soccer." },
+  { level: 'easy', en: "What time is it now?" },
+  { level: 'easy', en: "I'm really tired today." },
+  { level: 'easy', en: "Let's grab a cup of coffee." },
+  { level: 'easy', en: "Turn it off, please." },
+  { level: 'easy', en: "I need to pick up my kids." },
+  { level: 'mid', en: "I should have called you earlier." },
+  { level: 'mid', en: "What are you going to do this weekend?" },
+  { level: 'mid', en: "I've been waiting for an hour." },
+  { level: 'mid', en: "Could you pick me up at the airport?" },
+  { level: 'mid', en: "She's been working here for three years." },
+  { level: 'mid', en: "I'm looking forward to seeing you." },
+  { level: 'mid', en: "Why don't we meet up this Friday?" },
+  { level: 'mid', en: "He's kind of busy right now." },
+  { level: 'mid', en: "I would've told you if I knew." },
+  { level: 'mid', en: "Let me get back to you on that." },
+  { level: 'hard', en: "If I had known, I would have told you." },
+  { level: 'hard', en: "I wish I could have gone with you." },
+  { level: 'hard', en: "By the time we arrived, the movie had already started." },
+  { level: 'hard', en: "He must have forgotten about the meeting." },
+  { level: 'hard', en: "Despite the rain, they decided to go hiking." },
+  { level: 'hard', en: "I'd rather stay home than go out tonight." },
+  { level: 'hard', en: "You should've seen the look on his face." },
+  { level: 'hard', en: "It wouldn't have mattered anyway." },
+  { level: 'hard', en: "She could've made it if she'd left earlier." },
+  { level: 'hard', en: "There's no way I could've known that." },
+];
+
 const $  = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
 
@@ -548,6 +616,7 @@ function showPage(name) {
   if (name === 'progress') renderChart();
   if (name === 'report') renderReport();
   if (name === 'review') renderReview();
+  if (name === 'listen' && !listenState.current) pickListenSentence();
 }
 
 /* ---------- prompt ---------- */
@@ -706,6 +775,56 @@ function startPractice(btn, target) {
   };
   try { recog.start(); }
   catch { panel.innerHTML = `<span class="p-status">잠시 후 다시 시도해 주세요.</span>`; }
+}
+
+/* ---------- listening (dictation) ---------- */
+const LEVEL_KO = { easy: '초급', mid: '중급', hard: '고급' };
+let listenState = { current: null, count: 0, sumAcc: 0, best: 0 };
+
+function pickListenSentence() {
+  const level = $('#listenLevel').value || 'all';
+  const pool = level === 'all' ? LISTEN_BANK : LISTEN_BANK.filter(s => s.level === level);
+  const prevEn = listenState.current?.en;
+  let next = pool[Math.floor(Math.random() * pool.length)];
+  if (pool.length > 1) while (next.en === prevEn) next = pool[Math.floor(Math.random() * pool.length)];
+  listenState.current = next;
+  $('#listenInput').value = '';
+  $('#listenResult').innerHTML = '';
+  $('#listenLevelTag').textContent = LEVEL_KO[next.level] || '';
+}
+function playListenCurrent(mode) {
+  if (!listenState.current) return;
+  speak(listenState.current.en, mode);
+}
+function checkListenAnswer() {
+  if (!listenState.current) return;
+  const target = listenState.current.en;
+  const said = $('#listenInput').value.trim();
+  if (!said) { toast('먼저 들리는 대로 입력해 보세요'); return; }
+  const A = normWords(target), B = normWords(said);
+  const matched = lcsMatch(A, B);
+  const acc = A.length ? Math.round(matched.size / A.length * 100) : 0;
+  const color = acc >= 85 ? 'var(--good)' : acc >= 60 ? 'var(--warning)' : 'var(--critical)';
+  const words = target.split(/(\s+)/);
+  let wi = 0;
+  const marked = words.map(w => {
+    if (!w.trim()) return w;
+    const hit = matched.has(wi); wi++;
+    return `<b class="${hit?'hit':'miss'}">${escapeHtml(w)}</b>`;
+  }).join('');
+  const msg = acc >= 85 ? '훌륭해요! 정확히 들으셨네요 👏' : acc >= 60 ? '거의 다 왔어요! 밑줄 부분을 다시 들어보세요.' : '천천히 다시 들어볼까요? 🐢 천천히 듣기를 눌러보세요.';
+  $('#listenResult').innerHTML =
+    `<div class="practice" style="margin-top:12px">
+       <div class="p-status">정확도 <span class="p-acc" style="color:${color}">${acc}%</span> · ${msg}</div>
+       <div class="p-target">🎯 정답: ${marked}</div>
+       <div class="p-said">✍️ 내가 입력: "${escapeHtml(said)}"</div>
+     </div>`;
+  listenState.count++;
+  listenState.sumAcc += acc;
+  listenState.best = Math.max(listenState.best, acc);
+  $('#listenCount').textContent = listenState.count;
+  $('#listenAvg').textContent = Math.round(listenState.sumAcc / listenState.count) + '%';
+  $('#listenBest').textContent = listenState.best + '%';
 }
 
 /* ---------- result render ---------- */
@@ -1361,6 +1480,12 @@ function init() {
   $('#modeSelect').onchange = syncModeFields;
   $('#hideAnswers').onchange = renderReview;
   $('#hideDone').onchange = renderReview;
+  $('#listenLevel').onchange = pickListenSentence;
+  $('#listenPlayBtn').onclick = () => playListenCurrent('linked');
+  $('#listenSlowBtn').onclick = () => playListenCurrent('standard');
+  $('#listenNextBtn').onclick = pickListenSentence;
+  $('#listenCheckBtn').onclick = checkListenAnswer;
+  $('#listenInput').onkeydown = (e) => { if (e.key === 'Enter') checkListenAnswer(); };
   $('#settingsModal').onclick = (e) => { if (e.target === $('#settingsModal')) closeModal(); };
   $('#installBtn').onclick = async () => {
     if (!deferredPrompt) { toast('브라우저 메뉴의 “홈 화면에 추가”로 설치할 수 있어요'); return; }
