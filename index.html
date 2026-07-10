@@ -805,7 +805,12 @@ async function callGemini(sys, userMsg) {
     let detail = '';
     try { const e = await res.json(); detail = e.error?.message || ''; } catch {}
     if (res.status === 400 && /API key not valid/i.test(detail)) throw new Error('Gemini API 키가 올바르지 않아요. 설정을 확인해 주세요.');
-    if (res.status === 429) throw new Error('Gemini 무료 사용량 한도에 도달했어요. 잠시 후 다시 시도해 주세요.');
+    if (res.status === 429) {
+      const perMin = /per minute|PerMinute/i.test(detail);
+      throw new Error(perMin
+        ? '요청이 너무 잦아요(분당 한도). 1분 뒤 다시 시도해 주세요.'
+        : `Gemini 한도(429): 설정에서 다른 모델(예: gemini-1.5-flash)로 바꿔 보세요. — ${detail || '사유 없음'}`);
+    }
     throw new Error(`Gemini 오류 (${res.status}) ${detail}`);
   }
   const data = await res.json();
