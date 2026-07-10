@@ -36,15 +36,21 @@
 ### 1. 앱 열기
 `index.html` 파일을 웹 브라우저(Chrome, Edge, Safari 등)로 열면 됩니다.
 
-### 2. AI 첨삭 연결 (둘 중 하나)
-AI 첨삭 기능은 Anthropic(Claude) API를 사용합니다. **⚙️ 설정 → 연결 방식**에서 고르세요.
+### 2. AI 첨삭 연결 (셋 중 하나)
+AI 첨삭은 **⚙️ 설정 → 연결 방식**에서 고릅니다.
 
-- **직접 API 키 입력 (개인용, 기본값)**
-  1. [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys) 에서 API 키 발급
+- **Google Gemini (무료 · 기본값 · 권장)** ⭐
+  1. [aistudio.google.com/apikey](https://aistudio.google.com/apikey) 에서 **무료 API 키** 발급 (신용카드 불필요)
+  2. 설정 → 연결 방식 `Google Gemini` → 키 붙여넣고 저장
+  3. 무료 한도 안에서 교정 + 한국어 설명 + 점수 + 연음 가이드까지 제공. 브라우저에서 바로 호출(프록시 불필요)
+- **Claude 직접 API 키 (유료)**
+  1. [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys) 에서 API 키 발급 (결제 수단/크레딧 필요)
   2. 설정에 붙여넣고 저장 → 키는 **이 브라우저에만** 저장되고 Claude API를 직접 호출
-- **프록시 서버 사용 (키 숨김·공유용)**
+- **프록시 서버 사용 (Claude · 키 숨김·공유용)**
   - `proxy/` 폴더의 서버를 배포하고 그 주소를 설정에 입력
   - 사용자는 API 키를 몰라도 됩니다. 자세한 방법은 [`proxy/README.md`](proxy/README.md)
+
+> 발음 듣기·말하기 연습·진척도·복습은 **연결 없이도** 동작합니다. AI 첨삭만 위 연결이 필요해요.
 
 ### 3. 매일 학습하기
 1. 오늘의 주제를 보고 문장 3개를 영어로 작성 (1~2개만 써도 됩니다)
@@ -111,6 +117,6 @@ proxy/                   # (선택) API 키를 숨기는 프록시 서버
 - 말하기 인식: 브라우저 `SpeechRecognition` (Web Speech API)
 - 알림: 브라우저 `Notification` API (앱을 열어둔 동안)
 - 설치/오프라인: Web App Manifest + Service Worker (PWA)
-- 첨삭: Claude Messages API — 직접 호출 또는 프록시 경유
+- 첨삭: Google Gemini(무료) 또는 Claude Messages API(직접/프록시) — 설정에서 선택
 - 그래프: 순수 SVG (외부 차트 라이브러리 없음)
 - 다크 모드 자동 지원
