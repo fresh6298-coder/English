@@ -388,6 +388,7 @@
       <div class="speak-row" style="margin-top:10px">
         <button class="btn" id="listenPlayBtn">🎧 듣기 (연음)</button>
         <button id="listenSlowBtn">🐢 천천히 듣기</button>
+        <button id="listenShadowBtn">🗣️ 쉐도잉 (듣고 바로 따라 말하기)</button>
         <button id="listenNextBtn">🔀 다른 문장</button>
       </div>
       <input type="text" id="listenInput" placeholder="들리는 대로 영어로 입력하세요…" style="margin-top:12px; width:100%; box-sizing:border-box;">
@@ -782,6 +783,8 @@ const LEVEL_KO = { easy: '초급', mid: '중급', hard: '고급' };
 let listenState = { current: null, count: 0, sumAcc: 0, best: 0 };
 
 function pickListenSentence() {
+  if (activeRecog) { try { activeRecog.abort(); } catch {} activeRecog = null; }
+  speechSynthesis.cancel();
   const level = $('#listenLevel').value || 'all';
   const pool = level === 'all' ? LISTEN_BANK : LISTEN_BANK.filter(s => s.level === level);
   const prevEn = listenState.current?.en;
@@ -825,6 +828,58 @@ function checkListenAnswer() {
   $('#listenCount').textContent = listenState.count;
   $('#listenAvg').textContent = Math.round(listenState.sumAcc / listenState.count) + '%';
   $('#listenBest').textContent = listenState.best + '%';
+}
+
+// 쉐도잉: 문장을 듣고, 끝나자마자 자동으로 마이크를 켜서 따라 말한 것을 채점
+function shadowCurrent() {
+  if (!listenState.current) return;
+  if (!SR) { toast('이 브라우저는 음성 인식을 지원하지 않아요 (Chrome/Edge 권장)'); return; }
+  if (!('speechSynthesis' in window)) { toast('이 브라우저는 음성 재생을 지원하지 않아요'); return; }
+  const target = listenState.current.en;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(target);
+  u.lang = 'en-US';
+  const v = voices.find(x => x.name === localStorage.getItem(LS.voice));
+  if (v) u.voice = v;
+  u.rate = 1.0;
+  $('#listenResult').innerHTML = `<div class="practice"><span class="p-status live">🎧 듣는 중… 끝나면 바로 따라 말해보세요</span></div>`;
+  u.onend = () => startShadowRecognition(target);
+  u.onerror = () => { $('#listenResult').innerHTML = ''; };
+  speechSynthesis.speak(u);
+}
+function startShadowRecognition(target) {
+  if (activeRecog) { try { activeRecog.abort(); } catch {} activeRecog = null; }
+  const recog = new SR();
+  activeRecog = recog;
+  recog.lang = 'en-US'; recog.interimResults = false; recog.maxAlternatives = 1;
+  $('#listenResult').innerHTML = `<div class="practice"><span class="p-status live">🔴 따라 말해보세요…</span></div>`;
+  recog.onresult = (e) => {
+    const said = e.results[0][0].transcript;
+    const A = normWords(target), B = normWords(said);
+    const matched = lcsMatch(A, B);
+    const acc = A.length ? Math.round(matched.size / A.length * 100) : 0;
+    const color = acc >= 85 ? 'var(--good)' : acc >= 60 ? 'var(--warning)' : 'var(--critical)';
+    const words = target.split(/(\s+)/);
+    let wi = 0;
+    const marked = words.map(w => {
+      if (!w.trim()) return w;
+      const hit = matched.has(wi); wi++;
+      return `<b class="${hit?'hit':'miss'}">${escapeHtml(w)}</b>`;
+    }).join('');
+    const msg = acc >= 85 ? '완벽해요! 리듬까지 잘 따라했어요 👏' : acc >= 60 ? '좋아요, 밑줄 부분의 억양을 다시 들어보세요.' : '다시 들어보고 천천히 따라 말해볼까요?';
+    $('#listenResult').innerHTML =
+      `<div class="practice">
+         <div class="p-status">쉐도잉 정확도 <span class="p-acc" style="color:${color}">${acc}%</span> · ${msg}</div>
+         <div class="p-target">🎯 ${marked}</div>
+         <div class="p-said">🗣️ 내가 말한 것: "${escapeHtml(said)}"</div>
+       </div>`;
+  };
+  recog.onerror = (e) => {
+    $('#listenResult').innerHTML = `<div class="practice"><span class="p-status">인식 실패: ${e.error === 'not-allowed' ? '마이크 권한을 허용해 주세요.' : e.error === 'no-speech' ? '소리가 들리지 않았어요.' : escapeHtml(e.error)}</span></div>`;
+  };
+  recog.onend = () => { if (activeRecog === recog) activeRecog = null; };
+  try { recog.start(); }
+  catch { $('#listenResult').innerHTML = `<div class="practice"><span class="p-status">잠시 후 다시 시도해 주세요.</span></div>`; }
 }
 
 /* ---------- result render ---------- */
@@ -1483,6 +1538,7 @@ function init() {
   $('#listenLevel').onchange = pickListenSentence;
   $('#listenPlayBtn').onclick = () => playListenCurrent('linked');
   $('#listenSlowBtn').onclick = () => playListenCurrent('standard');
+  $('#listenShadowBtn').onclick = shadowCurrent;
   $('#listenNextBtn').onclick = pickListenSentence;
   $('#listenCheckBtn').onclick = checkListenAnswer;
   $('#listenInput').onkeydown = (e) => { if (e.key === 'Enter') checkListenAnswer(); };
