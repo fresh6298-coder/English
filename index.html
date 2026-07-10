@@ -184,6 +184,14 @@
   .practice .p-target b.hit { color: var(--good); font-weight: 700; }
   .practice .p-target b.miss { color: var(--critical); text-decoration: underline dotted; font-weight: 600; }
   .practice .p-said { margin-top: 6px; color: var(--text-secondary); }
+
+  /* Kids ambient playback */
+  .kids-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .kids-title { font-size: 15px; font-weight: 700; margin-top: 14px; }
+  .kids-progress { font-size: 12px; color: var(--muted); margin-left: auto; }
+  .kids-lyrics { margin-top: 10px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+  .kline { padding: 5px 0; font-size: 16px; color: var(--text-secondary); line-height: 1.5; }
+  .kline.active { color: var(--accent); font-weight: 700; }
   .practice .p-acc { font-weight: 700; }
 
   /* Chart */
@@ -296,6 +304,7 @@
     <div class="tab" data-page="progress">📈 진척도</div>
     <div class="tab" data-page="report">📊 주간 리포트</div>
     <div class="tab" data-page="review">📒 복습 노트 <span class="badge hide" id="reviewBadge">0</span></div>
+    <div class="tab" data-page="kids">👶 아이 영어</div>
   </div>
 
   <!-- ===== TODAY ===== -->
@@ -408,6 +417,35 @@
         <div class="tile"><div class="val" id="listenCount">0</div><div class="lbl">이번 세션 문제 수</div></div>
         <div class="tile"><div class="val" id="listenAvg">–</div><div class="lbl">평균 정확도</div></div>
         <div class="tile"><div class="val" id="listenBest">–</div><div class="lbl">최고 정확도</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== KIDS AMBIENT PLAYBACK ===== -->
+  <section class="page" data-page="kids">
+    <div class="card">
+      <h2><span>아이 영어 노출</span> <span class="tag">동요 · 대화문 반복 재생</span></h2>
+      <p style="font-size:12.5px; color:var(--muted); margin:0 0 14px;">
+        전통 동요와 쉬운 대화문을 브라우저 음성으로 계속 반복 재생해요. 노래 멜로디는 없고 목소리로 읽어주는 방식이며, 완전 무료·오프라인으로 동작해요.
+        화면을 켜둔 채로 틀어두세요 (모바일은 화면이 꺼지면 재생이 멈출 수 있어요).
+      </p>
+      <div class="field">
+        <label>재생 목록</label>
+        <select id="kidsMode">
+          <option value="all">전체 (동요 + 대화문)</option>
+          <option value="song">동요만</option>
+          <option value="dialogue">대화문만</option>
+        </select>
+      </div>
+      <label class="chk"><input type="checkbox" id="kidsLoop" checked> 🔁 끝까지 재생 후 처음부터 계속 반복</label>
+
+      <div class="kids-title"><span id="kidsTitle">—</span><span class="kids-progress" id="kidsProgress"></span></div>
+      <div class="kids-lyrics" id="kidsLyrics"></div>
+
+      <div class="kids-controls">
+        <button id="kidsPrevBtn">⏮ 이전</button>
+        <button class="btn" id="kidsPlayBtn">▶ 재생</button>
+        <button id="kidsNextBtn">⏭ 다음</button>
       </div>
     </div>
   </section>
@@ -589,6 +627,95 @@ const LISTEN_BANK = [
   { level: 'hard', en: "There's no way I could've known that." },
 ];
 
+// 아이 영어 노출용 재생 목록 — 저작권 없는 전통 동요 가사 + 쉬운 생활 대화문
+const KIDS_BANK = [
+  { type: 'song', title: 'Twinkle, Twinkle, Little Star', lines: [
+    "Twinkle, twinkle, little star,", "How I wonder what you are.",
+    "Up above the world so high,", "Like a diamond in the sky.",
+    "Twinkle, twinkle, little star,", "How I wonder what you are.",
+  ]},
+  { type: 'song', title: 'Itsy Bitsy Spider', lines: [
+    "The itsy bitsy spider climbed up the water spout.",
+    "Down came the rain and washed the spider out.",
+    "Out came the sun and dried up all the rain,",
+    "And the itsy bitsy spider climbed up the spout again.",
+  ]},
+  { type: 'song', title: 'Row, Row, Row Your Boat', lines: [
+    "Row, row, row your boat,", "Gently down the stream.",
+    "Merrily, merrily, merrily, merrily,", "Life is but a dream.",
+  ]},
+  { type: 'song', title: 'Mary Had a Little Lamb', lines: [
+    "Mary had a little lamb,", "Its fleece was white as snow.",
+    "And everywhere that Mary went,", "The lamb was sure to go.",
+  ]},
+  { type: 'song', title: 'Old MacDonald Had a Farm', lines: [
+    "Old MacDonald had a farm, E-I-E-I-O.",
+    "And on his farm he had a cow, E-I-E-I-O.",
+    "With a moo moo here, and a moo moo there,",
+    "Here a moo, there a moo, everywhere a moo moo.",
+    "Old MacDonald had a farm, E-I-E-I-O.",
+  ]},
+  { type: 'song', title: 'Head, Shoulders, Knees and Toes', lines: [
+    "Head, shoulders, knees and toes, knees and toes.",
+    "Head, shoulders, knees and toes, knees and toes.",
+    "And eyes, and ears, and mouth, and nose.",
+    "Head, shoulders, knees and toes, knees and toes.",
+  ]},
+  { type: 'song', title: 'The Wheels on the Bus', lines: [
+    "The wheels on the bus go round and round,",
+    "Round and round, round and round.",
+    "The wheels on the bus go round and round,",
+    "All through the town.",
+  ]},
+  { type: 'song', title: 'Rain, Rain, Go Away', lines: [
+    "Rain, rain, go away.", "Come again another day.",
+    "Little children want to play,", "Rain, rain, go away.",
+  ]},
+  { type: 'song', title: 'Hickory Dickory Dock', lines: [
+    "Hickory dickory dock,", "The mouse ran up the clock.",
+    "The clock struck one,", "The mouse ran down,",
+    "Hickory dickory dock.",
+  ]},
+  { type: 'song', title: 'ABC Song', lines: [
+    "A B C D E F G,", "H I J K L M N O P,",
+    "Q R S, T U V,", "W X, Y and Z.",
+    "Now I know my A B Cs,", "Next time won't you sing with me.",
+  ]},
+  { type: 'dialogue', title: 'Saying Hello', lines: [
+    "Hello! What's your name?", "My name is Tom. What's your name?",
+    "I'm Amy. Nice to meet you!", "Nice to meet you too!",
+  ]},
+  { type: 'dialogue', title: 'How Are You?', lines: [
+    "Hi! How are you today?", "I'm great, thank you! And you?",
+    "I'm good too. What are you doing?", "I'm playing with my toys.",
+  ]},
+  { type: 'dialogue', title: 'My Family', lines: [
+    "Who is this?", "This is my mom.",
+    "And who is that?", "That is my dad. This is my little sister.",
+  ]},
+  { type: 'dialogue', title: 'Colors', lines: [
+    "What color is this?", "It's red! I like red.",
+    "What's your favorite color?", "My favorite color is blue.",
+  ]},
+  { type: 'dialogue', title: 'Animals', lines: [
+    "Look! What is that animal?", "It's a dog. The dog says woof woof.",
+    "What does a cat say?", "The cat says meow.",
+  ]},
+  { type: 'dialogue', title: 'Counting Together', lines: [
+    "Let's count together. One, two, three.",
+    "Four, five, six!", "Seven, eight, nine, ten!",
+    "Great job! You can count to ten.",
+  ]},
+  { type: 'dialogue', title: 'Bedtime', lines: [
+    "It's time for bed.", "I don't want to sleep yet.",
+    "Let's read one more story.", "Okay, good night, sleep tight.",
+  ]},
+  { type: 'dialogue', title: 'At the Park', lines: [
+    "Can we go to the park?", "Sure! What do you want to play?",
+    "I want to go on the slide!", "Okay, let's go together.",
+  ]},
+];
+
 const $  = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
 
@@ -625,6 +752,8 @@ function showPage(name) {
   if (name === 'report') renderReport();
   if (name === 'review') renderReview();
   if (name === 'listen' && !listenState.current) pickListenSentence();
+  if (name === 'kids' && !kidsState.list.length) kidsLoadItem(0);
+  if (name !== 'kids' && kidsState.playing) kidsPause();
 }
 
 /* ---------- prompt ---------- */
@@ -888,6 +1017,78 @@ function startShadowRecognition(target) {
   try { recog.start(); }
   catch { $('#listenResult').innerHTML = `<div class="practice"><span class="p-status">잠시 후 다시 시도해 주세요.</span></div>`; }
 }
+
+/* ---------- kids ambient playback ---------- */
+let kidsState = { list: [], idx: 0, lineIdx: 0, playing: false };
+let kidsWakeLock = null;
+async function kidsRequestWakeLock() {
+  try { if ('wakeLock' in navigator) kidsWakeLock = await navigator.wakeLock.request('screen'); } catch {}
+}
+function kidsReleaseWakeLock() {
+  if (kidsWakeLock) { try { kidsWakeLock.release(); } catch {} kidsWakeLock = null; }
+}
+function kidsFilteredList() {
+  const mode = $('#kidsMode').value || 'all';
+  return mode === 'all' ? KIDS_BANK : KIDS_BANK.filter(i => i.type === mode);
+}
+function kidsLoadItem(idx) {
+  const list = kidsFilteredList();
+  if (!list.length) return;
+  kidsState.list = list;
+  kidsState.idx = ((idx % list.length) + list.length) % list.length;
+  kidsState.lineIdx = 0;
+  renderKidsItem();
+}
+function renderKidsItem() {
+  const item = kidsState.list[kidsState.idx];
+  if (!item) return;
+  $('#kidsTitle').textContent = (item.type === 'song' ? '🎵 ' : '💬 ') + item.title;
+  $('#kidsProgress').textContent = `${kidsState.idx + 1} / ${kidsState.list.length}`;
+  $('#kidsLyrics').innerHTML = item.lines.map((l, i) => `<div class="kline" data-i="${i}">${escapeHtml(l)}</div>`).join('');
+}
+function highlightKidsLine(i) {
+  $$('#kidsLyrics .kline').forEach(el => el.classList.toggle('active', +el.dataset.i === i));
+}
+function speakKidsLine() {
+  if (!kidsState.playing) return;
+  const item = kidsState.list[kidsState.idx];
+  if (!item) return;
+  if (kidsState.lineIdx >= item.lines.length) { kidsAdvanceItem(); return; }
+  highlightKidsLine(kidsState.lineIdx);
+  const u = new SpeechSynthesisUtterance(item.lines[kidsState.lineIdx]);
+  u.lang = 'en-US';
+  const v = voices.find(x => x.name === localStorage.getItem(LS.voice));
+  if (v) u.voice = v;
+  u.rate = 0.85;
+  u.pitch = item.type === 'song' ? 1.15 : 1.0;
+  u.onend = () => { if (!kidsState.playing) return; kidsState.lineIdx++; setTimeout(speakKidsLine, 450); };
+  u.onerror = () => { if (!kidsState.playing) return; kidsState.lineIdx++; setTimeout(speakKidsLine, 450); };
+  speechSynthesis.speak(u);
+}
+function kidsAdvanceItem() {
+  const atEnd = kidsState.idx + 1 >= kidsState.list.length;
+  if (atEnd && !$('#kidsLoop').checked) { kidsPause(); return; }
+  kidsLoadItem(atEnd ? 0 : kidsState.idx + 1);
+  if (kidsState.playing) setTimeout(speakKidsLine, 600);
+}
+function kidsPlay() {
+  if (!('speechSynthesis' in window)) { toast('이 브라우저는 음성 재생을 지원하지 않아요'); return; }
+  if (!kidsState.list.length) kidsLoadItem(0);
+  kidsState.playing = true;
+  $('#kidsPlayBtn').textContent = '⏸ 일시정지';
+  kidsRequestWakeLock();
+  speechSynthesis.cancel();
+  speakKidsLine();
+}
+function kidsPause() {
+  kidsState.playing = false;
+  speechSynthesis.cancel();
+  $('#kidsPlayBtn').textContent = '▶ 재생';
+  kidsReleaseWakeLock();
+}
+function kidsToggle() { kidsState.playing ? kidsPause() : kidsPlay(); }
+function kidsNext() { const wasPlaying = kidsState.playing; kidsPause(); kidsLoadItem(kidsState.idx + 1); if (wasPlaying) kidsPlay(); }
+function kidsPrev() { const wasPlaying = kidsState.playing; kidsPause(); kidsLoadItem(kidsState.idx - 1); if (wasPlaying) kidsPlay(); }
 
 /* ---------- result render ---------- */
 function resultHTML(r) {
@@ -1549,6 +1750,10 @@ function init() {
   $('#listenNextBtn').onclick = pickListenSentence;
   $('#listenCheckBtn').onclick = checkListenAnswer;
   $('#listenInput').onkeydown = (e) => { if (e.key === 'Enter') checkListenAnswer(); };
+  $('#kidsMode').onchange = () => { kidsPause(); kidsLoadItem(0); };
+  $('#kidsPlayBtn').onclick = kidsToggle;
+  $('#kidsPrevBtn').onclick = kidsPrev;
+  $('#kidsNextBtn').onclick = kidsNext;
   $('#settingsModal').onclick = (e) => { if (e.target === $('#settingsModal')) closeModal(); };
   $('#installBtn').onclick = async () => {
     if (!deferredPrompt) { toast('브라우저 메뉴의 “홈 화면에 추가”로 설치할 수 있어요'); return; }
