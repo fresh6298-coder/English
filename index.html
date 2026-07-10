@@ -820,6 +820,13 @@ function bestGeminiModel(models) {
       || models.find(m => !/preview|exp/i.test(m))
       || models[0] || null;
 }
+// 429(한도 초과) 시: lite ↔ 일반 모델은 무료 할당량이 별도라서, 반대쪽으로 바꿔주면 바로 될 때가 많음
+function altGeminiModelForRateLimit(models, current) {
+  const isLite = /lite/i.test(current);
+  return models.find(m => m !== current && (isLite ? !/lite/i.test(m) : /lite/i.test(m)))
+      || models.find(m => m !== current)
+      || null;
+}
 
 // 설정의 "연결 테스트" 버튼: 사용 가능한 모델을 조회해 드롭다운을 채운다
 async function testGemini() {
@@ -874,10 +881,17 @@ async function callGemini(sys, userMsg, retried) {
     }
     if (res.status === 400 && /API key not valid/i.test(detail)) throw new Error('Gemini API 키가 올바르지 않아요. 설정을 확인해 주세요.');
     if (res.status === 429) {
+      // 무료 한도 초과: lite/일반 모델은 할당량이 분리돼 있어 자동으로 다른 모델로 한 번 재시도
+      if (!retried) {
+        try {
+          const alt = altGeminiModelForRateLimit(await listGeminiModels(key), model);
+          if (alt) { localStorage.setItem(LS.gmodel, alt); return await callGemini(sys, userMsg, true); }
+        } catch {}
+      }
       const perMin = /per minute|PerMinute/i.test(detail);
       throw new Error(perMin
-        ? '요청이 너무 잦아요(분당 한도). 1분 뒤 다시 시도해 주세요.'
-        : `Gemini 한도(429): 잠시 후 다시 시도하거나 설정 → 연결 테스트로 다른 모델을 골라 보세요. — ${detail || '사유 없음'}`);
+        ? '요청이 너무 잦아요(분당 한도). 다른 모델로 자동 전환을 시도했지만 실패했어요. 1분 뒤 다시 시도해 주세요.'
+        : `Gemini 무료 한도(일일/분당)를 초과했어요. 다른 모델로 자동 전환을 시도했지만 실패했어요. 설정 → 연결 테스트로 다른 모델을 고르거나 내일 다시 시도해 주세요. — ${detail || '사유 없음'}`);
     }
     throw new Error(`Gemini 오류 (${res.status}) ${detail}`);
   }
