@@ -94,6 +94,7 @@ GitHub Pages로 무료 배포할 수 있습니다.
 
 ```
 index.html               # 앱 전체 (단일 파일)
+economics.html           # 경제학 학습노트 (문명·자본주의 개념 정리)
 manifest.json            # PWA 설정 (설치 정보)
 sw.js                    # Service Worker (오프라인 캐시)
 icon-192.png             # 앱 아이콘
@@ -105,6 +106,11 @@ proxy/                   # (선택) API 키를 숨기는 프록시 서버
   server.js       - Node 로컬/자체 호스팅 용
   README.md       - 프록시 배포 방법
 ```
+
+## 📘 경제학 학습노트
+
+`economics.html`은 경제학 원론 강의(문명·자본주의 편)의 핵심 개념을 정리한 별도의 학습자료 페이지입니다.
+`economics.html` 파일을 브라우저로 열면 바로 볼 수 있으며, 핵심 개념 · 용어집 · 이해도 확인 퀴즈 · 생각해볼 질문 탭으로 구성되어 있습니다.
 
 > **PWA(설치·오프라인)는 `https`로 호스팅해야 동작합니다** (예: GitHub Pages).
 > 파일을 직접 열어도(`file://`) 앱은 잘 동작하지만, 설치/오프라인 기능만 비활성화됩니다.
