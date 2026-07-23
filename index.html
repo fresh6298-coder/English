@@ -282,7 +282,7 @@
   <header class="top">
     <div>
       <h1>🇬🇧 매일 영어 3문장</h1>
-      <div class="sub">AI 첨삭 · 진척도 · 발음 · 주간 리포트 · 복습 노트</div>
+      <div class="sub">AI 첨삭 · 순발력 훈련 · 진척도 · 발음 · 주간 리포트 · 복습 노트</div>
     </div>
     <div style="display:flex; gap:8px">
       <button class="icon-btn hide" id="installBtn">📲 설치</button>
@@ -300,6 +300,7 @@
 
   <div class="tabs">
     <div class="tab active" data-page="today">✍️ 오늘</div>
+    <div class="tab" data-page="think">🧠 순발력 훈련</div>
     <div class="tab" data-page="listen">🎧 듣기 연습</div>
     <div class="tab" data-page="progress">📈 진척도</div>
     <div class="tab" data-page="report">📊 주간 리포트</div>
@@ -335,6 +336,57 @@
       <h2><span>첨삭 결과</span> <span class="tag" id="overallScore"></span></h2>
       <div id="results"></div>
       <div id="overallFb" class="result" style="display:none"></div>
+    </div>
+  </section>
+
+  <!-- ===== THINK FAST, SPEAK SMART ===== -->
+  <section class="page" data-page="think">
+    <div class="stats">
+      <div class="tile"><div class="val" id="thinkCount">0</div><div class="lbl">오늘 도전 횟수</div></div>
+      <div class="tile"><div class="val" id="thinkAvgLatency">–</div><div class="lbl">오늘 평균 반응 속도</div></div>
+      <div class="tile"><div class="val" id="thinkBestLatency">–</div><div class="lbl">최고 기록</div></div>
+      <div class="tile"><div class="val" id="thinkStreak">0</div><div class="lbl">연속 훈련일 🔥</div></div>
+    </div>
+
+    <div class="card">
+      <h2><span>🎯 순발력 챌린지</span> <span class="tag">질문 듣고 바로 대답하기</span></h2>
+      <p style="font-size:12.5px; color:var(--muted); margin:0 0 14px;">
+        질문을 듣고 바로 영어로 대답해 보세요. 막히면 아래 필러 표현을 써도 좋아요.
+        말을 시작하기까지 걸린 시간을 재서 순발력을 기록해요. 완벽한 문장이 아니어도 괜찮아요, 일단 말해보세요!
+      </p>
+      <div class="prompt-box">
+        <div>❓ <b id="challengeQ">—</b></div>
+        <button id="challengeNext">다른 질문</button>
+      </div>
+      <div class="speak-row">
+        <button id="challengeListenBtn">🔊 질문 듣기</button>
+        <button class="btn" id="challengeStartBtn">🎤 답변 시작</button>
+      </div>
+      <div id="challengeResult"></div>
+      <div style="font-size:11.5px; color:var(--muted); margin-top:12px">막힐 때 쓰는 필러 표현 (눌러서 들어보기)</div>
+      <div class="speak-row" id="fillerHintRow" style="margin-top:6px"></div>
+      <div id="challengeHistory"></div>
+    </div>
+
+    <div class="card">
+      <h2><span>⏱️ 필러 표현 연습</span> <span class="tag" id="fillerProgress"></span></h2>
+      <p style="font-size:12.5px; color:var(--muted); margin:0 0 12px;">생각할 시간을 자연스럽게 버는 표현이에요. 듣고, 따라 말해보세요.</p>
+      <div id="fillerCard"></div>
+      <div class="speak-row" style="margin-top:10px"><button id="fillerNext">🔀 다음 표현</button></div>
+    </div>
+
+    <div class="card">
+      <h2><span>🧩 청킹(덩어리) 표현 연습</span> <span class="tag" id="chunkProgress"></span></h2>
+      <p style="font-size:12.5px; color:var(--muted); margin:0 0 12px;">단어 하나하나가 아니라 통째로 외워서 바로 쓰는 표현이에요.</p>
+      <div id="chunkCard"></div>
+      <div class="speak-row" style="margin-top:10px"><button id="chunkNext">🔀 다음 표현</button></div>
+    </div>
+
+    <div class="card">
+      <h2><span>🚪 대화 시작 문장 연습</span> <span class="tag" id="starterProgress"></span></h2>
+      <p style="font-size:12.5px; color:var(--muted); margin:0 0 12px;">첫 마디가 제일 어렵죠. 미리 준비해두고 자동으로 나오게 연습해요.</p>
+      <div id="starterCard"></div>
+      <div class="speak-row" style="margin-top:10px"><button id="starterNext">🔀 다음 표현</button></div>
     </div>
   </section>
 
@@ -573,6 +625,7 @@ const LS = {
   remind:'elw_remind',     // 'HH:MM'
   notified:'elw_notified', // last notified date key
   reviewed:'elw_reviewed', // { itemId: true }
+  thinkHist: 'elw_think_hist', // [{date, q, latency, said}] — 순발력 챌린지 기록
 };
 
 const PROMPTS = [
@@ -716,6 +769,50 @@ const KIDS_BANK = [
   ]},
 ];
 
+// 순발력 훈련(Think Fast, Speak Smart) — 필러 표현 / 청킹 표현 / 대화 시작 문장 / 챌린지 질문
+const FILLER_PHRASES = [
+  { en: "That's a good question.", ko: "그거 좋은 질문이네요 — 말하는 동안 생각할 시간을 자연스럽게 법니다." },
+  { en: "Let me think about that for a second.", ko: "잠깐 생각 좀 해볼게요." },
+  { en: "Hmm, how can I say this?", ko: "음, 이걸 어떻게 말하지?" },
+  { en: "Well, that depends.", ko: "음, 그건 상황에 따라 달라요 — 바로 답하기 전에 생각할 여유를 줘요." },
+  { en: "Actually, it's interesting because...", ko: "사실, 흥미로운 게… — 자신감 있게 들리면서 뒷말을 준비할 시간을 벌어요." },
+];
+const CHUNK_PHRASES = [
+  { en: "I know what you mean.", ko: "무슨 말인지 알아요." },
+  { en: "You're absolutely right.", ko: "완전 맞는 말이에요." },
+  { en: "That's a great point.", ko: "좋은 지적이에요." },
+  { en: "I hadn't thought of that.", ko: "그건 미처 생각 못했네요." },
+  { en: "Let me explain what I mean.", ko: "제가 무슨 뜻인지 설명해드릴게요." },
+  { en: "Can you say that again, please?", ko: "다시 한번 말씀해 주시겠어요?" },
+  { en: "Sorry, I didn't catch that.", ko: "죄송해요, 못 들었어요 — 못 알아들었을 때 정중하게 다시 물어보는 표현." },
+];
+const STARTER_PHRASES = [
+  { en: "Hi, it's nice to meet you. How is your day going?", ko: "안녕하세요, 만나서 반가워요. 오늘 하루 어떠세요?" },
+  { en: "So, what do you think about that?", ko: "그래서, 그거에 대해 어떻게 생각하세요?" },
+  { en: "I was just thinking about that.", ko: "방금 그거에 대해 생각하고 있었어요." },
+  { en: "Can I ask you something?", ko: "뭐 좀 물어봐도 될까요?" },
+  { en: "That's really interesting. Tell me more.", ko: "정말 흥미롭네요. 더 말해주세요 — 상대가 계속 말하게 하면 나는 생각할 시간이 더 생겨요." },
+  { en: "In my opinion, ...", ko: "제 생각에는…" },
+  { en: "From my experience, ...", ko: "제 경험상…" },
+];
+const CHALLENGE_QUESTIONS = [
+  "What do you think about social media? Is it good or bad?",
+  "What is your favorite food, and why?",
+  "How do you usually spend your weekends?",
+  "What's the most difficult part of learning English for you?",
+  "Do you prefer working from home or at an office?",
+  "What was the last movie or show you watched?",
+  "If you could travel anywhere, where would you go?",
+  "What do you do when you feel nervous?",
+  "What's a skill you'd like to learn this year?",
+  "How do you usually start your morning?",
+  "What's something that made you smile recently?",
+  "Do you think it's better to plan everything or be spontaneous?",
+  "What's your opinion about working late at night?",
+  "Would you rather live in a big city or a small town?",
+  "What's a piece of advice you'd give to a friend?",
+];
+
 const $  = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
 
@@ -729,6 +826,10 @@ function getReviewed() {
 }
 function saveReviewed(r) { localStorage.setItem(LS.reviewed, JSON.stringify(r)); }
 function goalTarget() { return parseInt(localStorage.getItem(LS.goal) || '3', 10); }
+function getThinkHist() {
+  try { return JSON.parse(localStorage.getItem(LS.thinkHist)) || []; } catch { return []; }
+}
+function saveThinkHist(a) { localStorage.setItem(LS.thinkHist, JSON.stringify(a.slice(-300))); }
 
 function dateKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -752,6 +853,7 @@ function showPage(name) {
   if (name === 'report') renderReport();
   if (name === 'review') renderReview();
   if (name === 'listen' && !listenState.current) pickListenSentence();
+  if (name === 'think') initThinkTabIfNeeded();
   if (name === 'kids' && !kidsState.list.length) kidsLoadItem(0);
   if (name !== 'kids' && kidsState.playing) kidsPause();
 }
@@ -912,6 +1014,137 @@ function startPractice(btn, target) {
   };
   try { recog.start(); }
   catch { panel.innerHTML = `<span class="p-status">잠시 후 다시 시도해 주세요.</span>`; }
+}
+
+/* ---------- think fast, speak smart ---------- */
+let thinkState = { challengeQ: '', fillerIdx: -1, chunkIdx: -1, starterIdx: -1 };
+
+function pickChallenge(random) {
+  const idx = random
+    ? Math.floor(Math.random() * CHALLENGE_QUESTIONS.length)
+    : (new Date().getDate() + new Date().getHours()) % CHALLENGE_QUESTIONS.length;
+  thinkState.challengeQ = CHALLENGE_QUESTIONS[idx];
+  $('#challengeQ').textContent = thinkState.challengeQ;
+  $('#challengeResult').innerHTML = '';
+}
+
+function startChallengeRecording() {
+  if (!SR) { toast('이 브라우저는 음성 인식을 지원하지 않아요 (Chrome/Edge 권장)'); return; }
+  if (activeRecog) { try { activeRecog.abort(); } catch {} activeRecog = null; }
+  const btn = $('#challengeStartBtn');
+  const recog = new SR();
+  activeRecog = recog;
+  recog.lang = 'en-US'; recog.interimResults = true; recog.maxAlternatives = 1;
+  const t0 = performance.now();
+  let firstWordAt = null;
+  btn.classList.add('listening'); btn.textContent = '⏹ 중지';
+  $('#challengeResult').innerHTML = `<div class="practice"><span class="p-status live">🔴 듣는 중… 지금 바로 대답해보세요</span></div>`;
+  btn.onclick = () => { try { recog.stop(); } catch {} };
+
+  recog.onresult = (e) => {
+    let interim = '', final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) final += t; else interim += t;
+    }
+    if (firstWordAt == null && (interim || final).trim()) firstWordAt = performance.now();
+    if (final.trim()) {
+      finishChallenge(final.trim(), ((firstWordAt || performance.now()) - t0) / 1000);
+    } else if (interim.trim()) {
+      const latencyNow = ((firstWordAt - t0) / 1000).toFixed(1);
+      $('#challengeResult').innerHTML =
+        `<div class="practice"><span class="p-status live">🗣️ 말하는 중… (${latencyNow}초 만에 시작)</span>
+         <div class="p-said">"${escapeHtml(interim)}"</div></div>`;
+    }
+  };
+  recog.onerror = (e) => {
+    $('#challengeResult').innerHTML = `<div class="practice"><span class="p-status">인식 실패: ${e.error === 'not-allowed' ? '마이크 권한을 허용해 주세요.' : e.error === 'no-speech' ? '소리가 들리지 않았어요.' : escapeHtml(e.error)}</span></div>`;
+  };
+  recog.onend = () => {
+    btn.classList.remove('listening'); btn.textContent = '🎤 답변 시작';
+    btn.onclick = startChallengeRecording;
+    if (activeRecog === recog) activeRecog = null;
+  };
+  try { recog.start(); }
+  catch { $('#challengeResult').innerHTML = `<div class="practice"><span class="p-status">잠시 후 다시 시도해 주세요.</span></div>`; }
+}
+
+function finishChallenge(said, latencySec) {
+  const msg = latencySec <= 2 ? '정말 빠르네요! 🚀' : latencySec <= 4 ? '좋아요, 자연스러운 속도예요 👍' : '천천히도 괜찮아요. 필러 표현을 더 활용해보세요.';
+  $('#challengeResult').innerHTML =
+    `<div class="practice">
+       <div class="p-status">⏱️ 반응 속도 <span class="p-acc">${latencySec.toFixed(1)}초</span> · ${msg}</div>
+       <div class="p-said">🗣️ 내가 말한 답: "${escapeHtml(said)}"</div>
+     </div>`;
+  const hist = getThinkHist();
+  hist.push({ date: todayKey(), q: thinkState.challengeQ, latency: latencySec, said });
+  saveThinkHist(hist);
+  refreshThinkStats();
+}
+
+function computeThinkStreak(hist) {
+  const days = new Set(hist.map(h => h.date));
+  let streak = 0; const d = new Date();
+  while (days.has(dateKey(d))) { streak++; d.setDate(d.getDate() - 1); }
+  return streak;
+}
+function renderChallengeHistory(hist) {
+  const box = $('#challengeHistory');
+  if (!box) return;
+  const recent = hist.slice(-8).reverse();
+  if (!recent.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div style="font-size:12px; color:var(--muted); margin:14px 0 6px">최근 도전 기록</div>` +
+    recent.map(h => `<div class="hist-sent"><span style="color:var(--muted)">${fmtMD(h.date)}</span> · <b>${h.latency.toFixed(1)}초</b> — ${escapeHtml(h.q)}<br><span style="color:var(--text-secondary)">"${escapeHtml(h.said)}"</span></div>`).join('');
+}
+function refreshThinkStats() {
+  const hist = getThinkHist();
+  const today = todayKey();
+  const todays = hist.filter(h => h.date === today);
+  $('#thinkCount').textContent = todays.length;
+  const avg = todays.length ? (todays.reduce((a, h) => a + h.latency, 0) / todays.length) : null;
+  $('#thinkAvgLatency').textContent = avg == null ? '–' : avg.toFixed(1) + '초';
+  const best = hist.length ? Math.min(...hist.map(h => h.latency)) : null;
+  $('#thinkBestLatency').textContent = best == null ? '–' : best.toFixed(1) + '초';
+  $('#thinkStreak').textContent = computeThinkStreak(hist);
+  renderChallengeHistory(hist);
+}
+
+function renderFillerHints() {
+  const row = $('#fillerHintRow');
+  if (!row) return;
+  row.innerHTML = FILLER_PHRASES.map(p => `<button class="speak-btn" data-text="${escapeAttr(p.en)}" data-mode="linked">🔊 ${escapeHtml(p.en)}</button>`).join('');
+  row.querySelectorAll('.speak-btn').forEach(b => { b.onclick = () => speak(b.dataset.text, b.dataset.mode, b); });
+}
+
+function pickPhraseIdx(bank, prevIdx) {
+  if (bank.length <= 1) return 0;
+  let idx = prevIdx;
+  while (idx === prevIdx) idx = Math.floor(Math.random() * bank.length);
+  return idx;
+}
+function renderPhraseCard(cardSel, progressSel, bank, idx) {
+  const item = bank[idx];
+  const prog = $(progressSel); if (prog) prog.textContent = `${idx + 1} / ${bank.length}`;
+  const box = $(cardSel);
+  box.innerHTML = `
+    <div class="result" style="margin-bottom:0">
+      <div class="corr">${escapeHtml(item.en)}</div>
+      <div class="fb">${escapeHtml(item.ko)}</div>
+      ${speakButtonsHTML(item.en)}
+    </div>`;
+  bindSpeakButtons(box);
+}
+function nextFiller() { thinkState.fillerIdx = pickPhraseIdx(FILLER_PHRASES, thinkState.fillerIdx); renderPhraseCard('#fillerCard', '#fillerProgress', FILLER_PHRASES, thinkState.fillerIdx); }
+function nextChunk() { thinkState.chunkIdx = pickPhraseIdx(CHUNK_PHRASES, thinkState.chunkIdx); renderPhraseCard('#chunkCard', '#chunkProgress', CHUNK_PHRASES, thinkState.chunkIdx); }
+function nextStarter() { thinkState.starterIdx = pickPhraseIdx(STARTER_PHRASES, thinkState.starterIdx); renderPhraseCard('#starterCard', '#starterProgress', STARTER_PHRASES, thinkState.starterIdx); }
+
+function initThinkTabIfNeeded() {
+  if (!thinkState.challengeQ) pickChallenge(false);
+  if (thinkState.fillerIdx === -1) nextFiller();
+  if (thinkState.chunkIdx === -1) nextChunk();
+  if (thinkState.starterIdx === -1) nextStarter();
+  renderFillerHints();
+  refreshThinkStats();
 }
 
 /* ---------- listening (dictation) ---------- */
@@ -1603,7 +1836,7 @@ function renderReview() {
 /* ---------- refresh ---------- */
 function refreshAll() {
   refreshStats(); renderGoal(); renderHistory();
-  updateReviewBadge();
+  updateReviewBadge(); refreshThinkStats();
   if ($('section.page[data-page="progress"]').classList.contains('active')) renderChart();
   if ($('section.page[data-page="report"]').classList.contains('active')) renderReport();
   if ($('section.page[data-page="review"]').classList.contains('active')) renderReview();
@@ -1658,7 +1891,7 @@ function loadTodayIfExists() {
 function exportData() {
   const data = {
     app: 'daily-english-3', version: 1, exportedAt: new Date().toISOString(),
-    history: getHistory(), reviewed: getReviewed(),
+    history: getHistory(), reviewed: getReviewed(), thinkHistory: getThinkHist(),
     settings: {
       goal: localStorage.getItem(LS.goal), remind: localStorage.getItem(LS.remind),
       model: localStorage.getItem(LS.model), mode: localStorage.getItem(LS.mode),
@@ -1686,6 +1919,7 @@ function importData(file) {
     if (!confirm(`백업에서 ${impCount}일치 기록을 불러올까요?\n같은 날짜는 백업 내용으로 덮어씁니다. (현재 기록과 병합)`)) return;
     saveHistory({ ...curH, ...data.history });
     if (data.reviewed) saveReviewed({ ...getReviewed(), ...data.reviewed });
+    if (Array.isArray(data.thinkHistory)) saveThinkHist([...getThinkHist(), ...data.thinkHistory]);
     const s = data.settings || {};
     if (s.goal) localStorage.setItem(LS.goal, s.goal);
     if (s.remind) localStorage.setItem(LS.remind, s.remind);
@@ -1728,7 +1962,7 @@ function init() {
   renderInputs();
   pickPrompt(false);
   $('#todayLabel').textContent = fmtDate(todayKey());
-  refreshStats(); renderGoal(); renderHistory(); updateReviewBadge();
+  refreshStats(); renderGoal(); renderHistory(); updateReviewBadge(); refreshThinkStats();
   loadTodayIfExists();
   checkKeyBanner();
   startReminderClock();
@@ -1743,6 +1977,12 @@ function init() {
   $('#modeSelect').onchange = syncModeFields;
   $('#hideAnswers').onchange = renderReview;
   $('#hideDone').onchange = renderReview;
+  $('#challengeNext').onclick = () => pickChallenge(true);
+  $('#challengeListenBtn').onclick = () => speak(thinkState.challengeQ, 'linked');
+  $('#challengeStartBtn').onclick = startChallengeRecording;
+  $('#fillerNext').onclick = nextFiller;
+  $('#chunkNext').onclick = nextChunk;
+  $('#starterNext').onclick = nextStarter;
   $('#listenLevel').onchange = pickListenSentence;
   $('#listenPlayBtn').onclick = () => playListenCurrent('linked');
   $('#listenSlowBtn').onclick = () => playListenCurrent('standard');
@@ -1785,8 +2025,8 @@ function init() {
     toast('저장되었어요 ✓');
   };
   $('#clearData').onclick = () => {
-    if (confirm('모든 학습 기록과 복습 노트를 삭제할까요? 되돌릴 수 없습니다.')) {
-      localStorage.removeItem(LS.hist); localStorage.removeItem(LS.reviewed);
+    if (confirm('모든 학습 기록과 복습 노트, 순발력 훈련 기록을 삭제할까요? 되돌릴 수 없습니다.')) {
+      localStorage.removeItem(LS.hist); localStorage.removeItem(LS.reviewed); localStorage.removeItem(LS.thinkHist);
       closeModal(); refreshAll(); $('#resultCard').style.display = 'none'; $('#results').innerHTML='';
       toast('기록을 삭제했어요');
     }

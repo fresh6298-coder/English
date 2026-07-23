@@ -3,7 +3,7 @@
    - HTML 문서: network-first (온라인이면 항상 최신 화면, 오프라인이면 캐시)
    - 그 외 자원(아이콘/매니페스트): stale-while-revalidate (빠르게 캐시로 보여주고 뒤에서 갱신)
    - 첨삭 API(Claude/Gemini 등 외부 호출)는 가로채지 않음 */
-const CACHE = 'de3-v2';
+const CACHE = 'de3-v3';
 const ASSETS = [
   './',
   './index.html',
