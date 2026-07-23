@@ -81,11 +81,18 @@
   .card h2 { font-size: 15px; margin: 0 0 12px; letter-spacing: -0.01em; display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
   .card h2 .tag { color: var(--muted); font-weight: 400; font-size: 12px; }
 
-  /* Tabs */
-  .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  /* Tabs (top menu bar, sticky) */
+  .tabs {
+    display: flex; gap: 6px; margin: 0 -16px 16px; flex-wrap: nowrap; overflow-x: auto;
+    position: sticky; top: 0; z-index: 40;
+    background: var(--page); padding: 10px 16px; border-bottom: 1px solid var(--border);
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
   .tab {
     background: var(--card); border: 1px solid var(--border); border-radius: 999px;
     padding: 7px 14px; font-size: 13px; cursor: pointer; color: var(--text-secondary);
+    white-space: nowrap; flex: 0 0 auto;
   }
   .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
   .tab .badge { display:inline-block; min-width:16px; padding:0 5px; margin-left:5px; font-size:11px;
@@ -177,6 +184,14 @@
   .practice .p-target b.hit { color: var(--good); font-weight: 700; }
   .practice .p-target b.miss { color: var(--critical); text-decoration: underline dotted; font-weight: 600; }
   .practice .p-said { margin-top: 6px; color: var(--text-secondary); }
+
+  /* Kids ambient playback */
+  .kids-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .kids-title { font-size: 15px; font-weight: 700; margin-top: 14px; }
+  .kids-progress { font-size: 12px; color: var(--muted); margin-left: auto; }
+  .kids-lyrics { margin-top: 10px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+  .kline { padding: 5px 0; font-size: 16px; color: var(--text-secondary); line-height: 1.5; }
+  .kline.active { color: var(--accent); font-weight: 700; }
   .practice .p-acc { font-weight: 700; }
 
   /* Chart */
@@ -267,7 +282,7 @@
   <header class="top">
     <div>
       <h1>🇬🇧 매일 영어 3문장</h1>
-      <div class="sub">AI 첨삭 · 진척도 · 발음 · 주간 리포트 · 복습 노트</div>
+      <div class="sub">AI 첨삭 · 순발력 훈련 · 진척도 · 발음 · 주간 리포트 · 복습 노트</div>
     </div>
     <div style="display:flex; gap:8px">
       <button class="icon-btn hide" id="installBtn">📲 설치</button>
@@ -285,9 +300,12 @@
 
   <div class="tabs">
     <div class="tab active" data-page="today">✍️ 오늘</div>
+    <div class="tab" data-page="think">🧠 순발력 훈련</div>
+    <div class="tab" data-page="listen">🎧 듣기 연습</div>
     <div class="tab" data-page="progress">📈 진척도</div>
     <div class="tab" data-page="report">📊 주간 리포트</div>
     <div class="tab" data-page="review">📒 복습 노트 <span class="badge hide" id="reviewBadge">0</span></div>
+    <div class="tab" data-page="kids">👶 아이 영어</div>
   </div>
 
   <!-- ===== TODAY ===== -->
@@ -318,6 +336,57 @@
       <h2><span>첨삭 결과</span> <span class="tag" id="overallScore"></span></h2>
       <div id="results"></div>
       <div id="overallFb" class="result" style="display:none"></div>
+    </div>
+  </section>
+
+  <!-- ===== THINK FAST, SPEAK SMART ===== -->
+  <section class="page" data-page="think">
+    <div class="stats">
+      <div class="tile"><div class="val" id="thinkCount">0</div><div class="lbl">오늘 도전 횟수</div></div>
+      <div class="tile"><div class="val" id="thinkAvgLatency">–</div><div class="lbl">오늘 평균 반응 속도</div></div>
+      <div class="tile"><div class="val" id="thinkBestLatency">–</div><div class="lbl">최고 기록</div></div>
+      <div class="tile"><div class="val" id="thinkStreak">0</div><div class="lbl">연속 훈련일 🔥</div></div>
+    </div>
+
+    <div class="card">
+      <h2><span>🎯 순발력 챌린지</span> <span class="tag">질문 듣고 바로 대답하기</span></h2>
+      <p style="font-size:12.5px; color:var(--muted); margin:0 0 14px;">
+        질문을 듣고 바로 영어로 대답해 보세요. 막히면 아래 필러 표현을 써도 좋아요.
+        말을 시작하기까지 걸린 시간을 재서 순발력을 기록해요. 완벽한 문장이 아니어도 괜찮아요, 일단 말해보세요!
+      </p>
+      <div class="prompt-box">
+        <div>❓ <b id="challengeQ">—</b></div>
+        <button id="challengeNext">다른 질문</button>
+      </div>
+      <div class="speak-row">
+        <button id="challengeListenBtn">🔊 질문 듣기</button>
+        <button class="btn" id="challengeStartBtn">🎤 답변 시작</button>
+      </div>
+      <div id="challengeResult"></div>
+      <div style="font-size:11.5px; color:var(--muted); margin-top:12px">막힐 때 쓰는 필러 표현 (눌러서 들어보기)</div>
+      <div class="speak-row" id="fillerHintRow" style="margin-top:6px"></div>
+      <div id="challengeHistory"></div>
+    </div>
+
+    <div class="card">
+      <h2><span>⏱️ 필러 표현 연습</span> <span class="tag" id="fillerProgress"></span></h2>
+      <p style="font-size:12.5px; color:var(--muted); margin:0 0 12px;">생각할 시간을 자연스럽게 버는 표현이에요. 듣고, 따라 말해보세요.</p>
+      <div id="fillerCard"></div>
+      <div class="speak-row" style="margin-top:10px"><button id="fillerNext">🔀 다음 표현</button></div>
+    </div>
+
+    <div class="card">
+      <h2><span>🧩 청킹(덩어리) 표현 연습</span> <span class="tag" id="chunkProgress"></span></h2>
+      <p style="font-size:12.5px; color:var(--muted); margin:0 0 12px;">단어 하나하나가 아니라 통째로 외워서 바로 쓰는 표현이에요.</p>
+      <div id="chunkCard"></div>
+      <div class="speak-row" style="margin-top:10px"><button id="chunkNext">🔀 다음 표현</button></div>
+    </div>
+
+    <div class="card">
+      <h2><span>🚪 대화 시작 문장 연습</span> <span class="tag" id="starterProgress"></span></h2>
+      <p style="font-size:12.5px; color:var(--muted); margin:0 0 12px;">첫 마디가 제일 어렵죠. 미리 준비해두고 자동으로 나오게 연습해요.</p>
+      <div id="starterCard"></div>
+      <div class="speak-row" style="margin-top:10px"><button id="starterNext">🔀 다음 표현</button></div>
     </div>
   </section>
 
@@ -367,6 +436,69 @@
         <label class="chk"><input type="checkbox" id="hideDone"> 복습 완료 숨기기</label>
       </div>
       <div id="reviewList"><div class="empty-msg">첨삭을 받으면 틀린 표현이 여기에 모여요.</div></div>
+    </div>
+  </section>
+
+  <!-- ===== LISTENING (DICTATION) ===== -->
+  <section class="page" data-page="listen">
+    <div class="card">
+      <h2><span>딕테이션 (받아쓰기)</span> <span class="tag" id="listenLevelTag"></span></h2>
+      <p style="font-size:12.5px; color:var(--muted); margin:0 0 14px;">문장을 듣고 들리는 대로 영어로 타이핑해 보세요. 실제 대화 속도(연음)로 재생돼요.</p>
+      <div class="field">
+        <label>난이도</label>
+        <select id="listenLevel">
+          <option value="all">전체</option>
+          <option value="easy">초급</option>
+          <option value="mid">중급</option>
+          <option value="hard">고급</option>
+        </select>
+      </div>
+      <div class="speak-row" style="margin-top:10px">
+        <button class="btn" id="listenPlayBtn">🎧 듣기 (연음)</button>
+        <button id="listenSlowBtn">🐢 천천히 듣기</button>
+        <button id="listenShadowBtn">🗣️ 쉐도잉 (듣고 바로 따라 말하기)</button>
+        <button id="listenNextBtn">🔀 다른 문장</button>
+      </div>
+      <input type="text" id="listenInput" placeholder="들리는 대로 영어로 입력하세요…" style="margin-top:12px; width:100%; box-sizing:border-box;">
+      <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;">
+        <button class="btn" id="listenCheckBtn">채점하기</button>
+        <span style="font-size:12px; color:var(--muted)">Enter로도 채점돼요</span>
+      </div>
+      <div id="listenResult"></div>
+      <div class="stats" style="margin-top:16px">
+        <div class="tile"><div class="val" id="listenCount">0</div><div class="lbl">이번 세션 문제 수</div></div>
+        <div class="tile"><div class="val" id="listenAvg">–</div><div class="lbl">평균 정확도</div></div>
+        <div class="tile"><div class="val" id="listenBest">–</div><div class="lbl">최고 정확도</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== KIDS AMBIENT PLAYBACK ===== -->
+  <section class="page" data-page="kids">
+    <div class="card">
+      <h2><span>아이 영어 노출</span> <span class="tag">동요 · 대화문 반복 재생</span></h2>
+      <p style="font-size:12.5px; color:var(--muted); margin:0 0 14px;">
+        전통 동요와 쉬운 대화문을 브라우저 음성으로 계속 반복 재생해요. 노래 멜로디는 없고 목소리로 읽어주는 방식이며, 완전 무료·오프라인으로 동작해요.
+        화면을 켜둔 채로 틀어두세요 (모바일은 화면이 꺼지면 재생이 멈출 수 있어요).
+      </p>
+      <div class="field">
+        <label>재생 목록</label>
+        <select id="kidsMode">
+          <option value="all">전체 (동요 + 대화문)</option>
+          <option value="song">동요만</option>
+          <option value="dialogue">대화문만</option>
+        </select>
+      </div>
+      <label class="chk"><input type="checkbox" id="kidsLoop" checked> 🔁 끝까지 재생 후 처음부터 계속 반복</label>
+
+      <div class="kids-title"><span id="kidsTitle">—</span><span class="kids-progress" id="kidsProgress"></span></div>
+      <div class="kids-lyrics" id="kidsLyrics"></div>
+
+      <div class="kids-controls">
+        <button id="kidsPrevBtn">⏮ 이전</button>
+        <button class="btn" id="kidsPlayBtn">▶ 재생</button>
+        <button id="kidsNextBtn">⏭ 다음</button>
+      </div>
     </div>
   </section>
 </div>
@@ -493,6 +625,7 @@ const LS = {
   remind:'elw_remind',     // 'HH:MM'
   notified:'elw_notified', // last notified date key
   reviewed:'elw_reviewed', // { itemId: true }
+  thinkHist: 'elw_think_hist', // [{date, q, latency, said}] — 순발력 챌린지 기록
 };
 
 const PROMPTS = [
@@ -513,6 +646,173 @@ const PROMPTS = [
   "올해 이루고 싶은 목표",
 ];
 
+// 딕테이션(받아쓰기) 문장 뱅크 — 연음/축약이 잘 드러나는 실제 회화 문장 위주
+const LISTEN_BANK = [
+  { level: 'easy', en: "I want to go home." },
+  { level: 'easy', en: "She is my best friend." },
+  { level: 'easy', en: "Can you help me out?" },
+  { level: 'easy', en: "I have to go now." },
+  { level: 'easy', en: "He likes to play soccer." },
+  { level: 'easy', en: "What time is it now?" },
+  { level: 'easy', en: "I'm really tired today." },
+  { level: 'easy', en: "Let's grab a cup of coffee." },
+  { level: 'easy', en: "Turn it off, please." },
+  { level: 'easy', en: "I need to pick up my kids." },
+  { level: 'mid', en: "I should have called you earlier." },
+  { level: 'mid', en: "What are you going to do this weekend?" },
+  { level: 'mid', en: "I've been waiting for an hour." },
+  { level: 'mid', en: "Could you pick me up at the airport?" },
+  { level: 'mid', en: "She's been working here for three years." },
+  { level: 'mid', en: "I'm looking forward to seeing you." },
+  { level: 'mid', en: "Why don't we meet up this Friday?" },
+  { level: 'mid', en: "He's kind of busy right now." },
+  { level: 'mid', en: "I would've told you if I knew." },
+  { level: 'mid', en: "Let me get back to you on that." },
+  { level: 'hard', en: "If I had known, I would have told you." },
+  { level: 'hard', en: "I wish I could have gone with you." },
+  { level: 'hard', en: "By the time we arrived, the movie had already started." },
+  { level: 'hard', en: "He must have forgotten about the meeting." },
+  { level: 'hard', en: "Despite the rain, they decided to go hiking." },
+  { level: 'hard', en: "I'd rather stay home than go out tonight." },
+  { level: 'hard', en: "You should've seen the look on his face." },
+  { level: 'hard', en: "It wouldn't have mattered anyway." },
+  { level: 'hard', en: "She could've made it if she'd left earlier." },
+  { level: 'hard', en: "There's no way I could've known that." },
+];
+
+// 아이 영어 노출용 재생 목록 — 저작권 없는 전통 동요 가사 + 쉬운 생활 대화문
+const KIDS_BANK = [
+  { type: 'song', title: 'Twinkle, Twinkle, Little Star', lines: [
+    "Twinkle, twinkle, little star,", "How I wonder what you are.",
+    "Up above the world so high,", "Like a diamond in the sky.",
+    "Twinkle, twinkle, little star,", "How I wonder what you are.",
+  ]},
+  { type: 'song', title: 'Itsy Bitsy Spider', lines: [
+    "The itsy bitsy spider climbed up the water spout.",
+    "Down came the rain and washed the spider out.",
+    "Out came the sun and dried up all the rain,",
+    "And the itsy bitsy spider climbed up the spout again.",
+  ]},
+  { type: 'song', title: 'Row, Row, Row Your Boat', lines: [
+    "Row, row, row your boat,", "Gently down the stream.",
+    "Merrily, merrily, merrily, merrily,", "Life is but a dream.",
+  ]},
+  { type: 'song', title: 'Mary Had a Little Lamb', lines: [
+    "Mary had a little lamb,", "Its fleece was white as snow.",
+    "And everywhere that Mary went,", "The lamb was sure to go.",
+  ]},
+  { type: 'song', title: 'Old MacDonald Had a Farm', lines: [
+    "Old MacDonald had a farm, E-I-E-I-O.",
+    "And on his farm he had a cow, E-I-E-I-O.",
+    "With a moo moo here, and a moo moo there,",
+    "Here a moo, there a moo, everywhere a moo moo.",
+    "Old MacDonald had a farm, E-I-E-I-O.",
+  ]},
+  { type: 'song', title: 'Head, Shoulders, Knees and Toes', lines: [
+    "Head, shoulders, knees and toes, knees and toes.",
+    "Head, shoulders, knees and toes, knees and toes.",
+    "And eyes, and ears, and mouth, and nose.",
+    "Head, shoulders, knees and toes, knees and toes.",
+  ]},
+  { type: 'song', title: 'The Wheels on the Bus', lines: [
+    "The wheels on the bus go round and round,",
+    "Round and round, round and round.",
+    "The wheels on the bus go round and round,",
+    "All through the town.",
+  ]},
+  { type: 'song', title: 'Rain, Rain, Go Away', lines: [
+    "Rain, rain, go away.", "Come again another day.",
+    "Little children want to play,", "Rain, rain, go away.",
+  ]},
+  { type: 'song', title: 'Hickory Dickory Dock', lines: [
+    "Hickory dickory dock,", "The mouse ran up the clock.",
+    "The clock struck one,", "The mouse ran down,",
+    "Hickory dickory dock.",
+  ]},
+  { type: 'song', title: 'ABC Song', lines: [
+    "A B C D E F G,", "H I J K L M N O P,",
+    "Q R S, T U V,", "W X, Y and Z.",
+    "Now I know my A B Cs,", "Next time won't you sing with me.",
+  ]},
+  { type: 'dialogue', title: 'Saying Hello', lines: [
+    "Hello! What's your name?", "My name is Tom. What's your name?",
+    "I'm Amy. Nice to meet you!", "Nice to meet you too!",
+  ]},
+  { type: 'dialogue', title: 'How Are You?', lines: [
+    "Hi! How are you today?", "I'm great, thank you! And you?",
+    "I'm good too. What are you doing?", "I'm playing with my toys.",
+  ]},
+  { type: 'dialogue', title: 'My Family', lines: [
+    "Who is this?", "This is my mom.",
+    "And who is that?", "That is my dad. This is my little sister.",
+  ]},
+  { type: 'dialogue', title: 'Colors', lines: [
+    "What color is this?", "It's red! I like red.",
+    "What's your favorite color?", "My favorite color is blue.",
+  ]},
+  { type: 'dialogue', title: 'Animals', lines: [
+    "Look! What is that animal?", "It's a dog. The dog says woof woof.",
+    "What does a cat say?", "The cat says meow.",
+  ]},
+  { type: 'dialogue', title: 'Counting Together', lines: [
+    "Let's count together. One, two, three.",
+    "Four, five, six!", "Seven, eight, nine, ten!",
+    "Great job! You can count to ten.",
+  ]},
+  { type: 'dialogue', title: 'Bedtime', lines: [
+    "It's time for bed.", "I don't want to sleep yet.",
+    "Let's read one more story.", "Okay, good night, sleep tight.",
+  ]},
+  { type: 'dialogue', title: 'At the Park', lines: [
+    "Can we go to the park?", "Sure! What do you want to play?",
+    "I want to go on the slide!", "Okay, let's go together.",
+  ]},
+];
+
+// 순발력 훈련(Think Fast, Speak Smart) — 필러 표현 / 청킹 표현 / 대화 시작 문장 / 챌린지 질문
+const FILLER_PHRASES = [
+  { en: "That's a good question.", ko: "그거 좋은 질문이네요 — 말하는 동안 생각할 시간을 자연스럽게 법니다." },
+  { en: "Let me think about that for a second.", ko: "잠깐 생각 좀 해볼게요." },
+  { en: "Hmm, how can I say this?", ko: "음, 이걸 어떻게 말하지?" },
+  { en: "Well, that depends.", ko: "음, 그건 상황에 따라 달라요 — 바로 답하기 전에 생각할 여유를 줘요." },
+  { en: "Actually, it's interesting because...", ko: "사실, 흥미로운 게… — 자신감 있게 들리면서 뒷말을 준비할 시간을 벌어요." },
+];
+const CHUNK_PHRASES = [
+  { en: "I know what you mean.", ko: "무슨 말인지 알아요." },
+  { en: "You're absolutely right.", ko: "완전 맞는 말이에요." },
+  { en: "That's a great point.", ko: "좋은 지적이에요." },
+  { en: "I hadn't thought of that.", ko: "그건 미처 생각 못했네요." },
+  { en: "Let me explain what I mean.", ko: "제가 무슨 뜻인지 설명해드릴게요." },
+  { en: "Can you say that again, please?", ko: "다시 한번 말씀해 주시겠어요?" },
+  { en: "Sorry, I didn't catch that.", ko: "죄송해요, 못 들었어요 — 못 알아들었을 때 정중하게 다시 물어보는 표현." },
+];
+const STARTER_PHRASES = [
+  { en: "Hi, it's nice to meet you. How is your day going?", ko: "안녕하세요, 만나서 반가워요. 오늘 하루 어떠세요?" },
+  { en: "So, what do you think about that?", ko: "그래서, 그거에 대해 어떻게 생각하세요?" },
+  { en: "I was just thinking about that.", ko: "방금 그거에 대해 생각하고 있었어요." },
+  { en: "Can I ask you something?", ko: "뭐 좀 물어봐도 될까요?" },
+  { en: "That's really interesting. Tell me more.", ko: "정말 흥미롭네요. 더 말해주세요 — 상대가 계속 말하게 하면 나는 생각할 시간이 더 생겨요." },
+  { en: "In my opinion, ...", ko: "제 생각에는…" },
+  { en: "From my experience, ...", ko: "제 경험상…" },
+];
+const CHALLENGE_QUESTIONS = [
+  "What do you think about social media? Is it good or bad?",
+  "What is your favorite food, and why?",
+  "How do you usually spend your weekends?",
+  "What's the most difficult part of learning English for you?",
+  "Do you prefer working from home or at an office?",
+  "What was the last movie or show you watched?",
+  "If you could travel anywhere, where would you go?",
+  "What do you do when you feel nervous?",
+  "What's a skill you'd like to learn this year?",
+  "How do you usually start your morning?",
+  "What's something that made you smile recently?",
+  "Do you think it's better to plan everything or be spontaneous?",
+  "What's your opinion about working late at night?",
+  "Would you rather live in a big city or a small town?",
+  "What's a piece of advice you'd give to a friend?",
+];
+
 const $  = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
 
@@ -526,6 +826,10 @@ function getReviewed() {
 }
 function saveReviewed(r) { localStorage.setItem(LS.reviewed, JSON.stringify(r)); }
 function goalTarget() { return parseInt(localStorage.getItem(LS.goal) || '3', 10); }
+function getThinkHist() {
+  try { return JSON.parse(localStorage.getItem(LS.thinkHist)) || []; } catch { return []; }
+}
+function saveThinkHist(a) { localStorage.setItem(LS.thinkHist, JSON.stringify(a.slice(-300))); }
 
 function dateKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -548,6 +852,10 @@ function showPage(name) {
   if (name === 'progress') renderChart();
   if (name === 'report') renderReport();
   if (name === 'review') renderReview();
+  if (name === 'listen' && !listenState.current) pickListenSentence();
+  if (name === 'think') initThinkTabIfNeeded();
+  if (name === 'kids' && !kidsState.list.length) kidsLoadItem(0);
+  if (name !== 'kids' && kidsState.playing) kidsPause();
 }
 
 /* ---------- prompt ---------- */
@@ -708,6 +1016,313 @@ function startPractice(btn, target) {
   catch { panel.innerHTML = `<span class="p-status">잠시 후 다시 시도해 주세요.</span>`; }
 }
 
+/* ---------- think fast, speak smart ---------- */
+let thinkState = { challengeQ: '', fillerIdx: -1, chunkIdx: -1, starterIdx: -1 };
+
+function pickChallenge(random) {
+  const idx = random
+    ? Math.floor(Math.random() * CHALLENGE_QUESTIONS.length)
+    : (new Date().getDate() + new Date().getHours()) % CHALLENGE_QUESTIONS.length;
+  thinkState.challengeQ = CHALLENGE_QUESTIONS[idx];
+  $('#challengeQ').textContent = thinkState.challengeQ;
+  $('#challengeResult').innerHTML = '';
+}
+
+function startChallengeRecording() {
+  if (!SR) { toast('이 브라우저는 음성 인식을 지원하지 않아요 (Chrome/Edge 권장)'); return; }
+  if (activeRecog) { try { activeRecog.abort(); } catch {} activeRecog = null; }
+  const btn = $('#challengeStartBtn');
+  const recog = new SR();
+  activeRecog = recog;
+  recog.lang = 'en-US'; recog.interimResults = true; recog.maxAlternatives = 1;
+  const t0 = performance.now();
+  let firstWordAt = null;
+  btn.classList.add('listening'); btn.textContent = '⏹ 중지';
+  $('#challengeResult').innerHTML = `<div class="practice"><span class="p-status live">🔴 듣는 중… 지금 바로 대답해보세요</span></div>`;
+  btn.onclick = () => { try { recog.stop(); } catch {} };
+
+  recog.onresult = (e) => {
+    let interim = '', final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) final += t; else interim += t;
+    }
+    if (firstWordAt == null && (interim || final).trim()) firstWordAt = performance.now();
+    if (final.trim()) {
+      finishChallenge(final.trim(), ((firstWordAt || performance.now()) - t0) / 1000);
+    } else if (interim.trim()) {
+      const latencyNow = ((firstWordAt - t0) / 1000).toFixed(1);
+      $('#challengeResult').innerHTML =
+        `<div class="practice"><span class="p-status live">🗣️ 말하는 중… (${latencyNow}초 만에 시작)</span>
+         <div class="p-said">"${escapeHtml(interim)}"</div></div>`;
+    }
+  };
+  recog.onerror = (e) => {
+    $('#challengeResult').innerHTML = `<div class="practice"><span class="p-status">인식 실패: ${e.error === 'not-allowed' ? '마이크 권한을 허용해 주세요.' : e.error === 'no-speech' ? '소리가 들리지 않았어요.' : escapeHtml(e.error)}</span></div>`;
+  };
+  recog.onend = () => {
+    btn.classList.remove('listening'); btn.textContent = '🎤 답변 시작';
+    btn.onclick = startChallengeRecording;
+    if (activeRecog === recog) activeRecog = null;
+  };
+  try { recog.start(); }
+  catch { $('#challengeResult').innerHTML = `<div class="practice"><span class="p-status">잠시 후 다시 시도해 주세요.</span></div>`; }
+}
+
+function finishChallenge(said, latencySec) {
+  const msg = latencySec <= 2 ? '정말 빠르네요! 🚀' : latencySec <= 4 ? '좋아요, 자연스러운 속도예요 👍' : '천천히도 괜찮아요. 필러 표현을 더 활용해보세요.';
+  $('#challengeResult').innerHTML =
+    `<div class="practice">
+       <div class="p-status">⏱️ 반응 속도 <span class="p-acc">${latencySec.toFixed(1)}초</span> · ${msg}</div>
+       <div class="p-said">🗣️ 내가 말한 답: "${escapeHtml(said)}"</div>
+     </div>`;
+  const hist = getThinkHist();
+  hist.push({ date: todayKey(), q: thinkState.challengeQ, latency: latencySec, said });
+  saveThinkHist(hist);
+  refreshThinkStats();
+}
+
+function computeThinkStreak(hist) {
+  const days = new Set(hist.map(h => h.date));
+  let streak = 0; const d = new Date();
+  while (days.has(dateKey(d))) { streak++; d.setDate(d.getDate() - 1); }
+  return streak;
+}
+function renderChallengeHistory(hist) {
+  const box = $('#challengeHistory');
+  if (!box) return;
+  const recent = hist.slice(-8).reverse();
+  if (!recent.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div style="font-size:12px; color:var(--muted); margin:14px 0 6px">최근 도전 기록</div>` +
+    recent.map(h => `<div class="hist-sent"><span style="color:var(--muted)">${fmtMD(h.date)}</span> · <b>${h.latency.toFixed(1)}초</b> — ${escapeHtml(h.q)}<br><span style="color:var(--text-secondary)">"${escapeHtml(h.said)}"</span></div>`).join('');
+}
+function refreshThinkStats() {
+  const hist = getThinkHist();
+  const today = todayKey();
+  const todays = hist.filter(h => h.date === today);
+  $('#thinkCount').textContent = todays.length;
+  const avg = todays.length ? (todays.reduce((a, h) => a + h.latency, 0) / todays.length) : null;
+  $('#thinkAvgLatency').textContent = avg == null ? '–' : avg.toFixed(1) + '초';
+  const best = hist.length ? Math.min(...hist.map(h => h.latency)) : null;
+  $('#thinkBestLatency').textContent = best == null ? '–' : best.toFixed(1) + '초';
+  $('#thinkStreak').textContent = computeThinkStreak(hist);
+  renderChallengeHistory(hist);
+}
+
+function renderFillerHints() {
+  const row = $('#fillerHintRow');
+  if (!row) return;
+  row.innerHTML = FILLER_PHRASES.map(p => `<button class="speak-btn" data-text="${escapeAttr(p.en)}" data-mode="linked">🔊 ${escapeHtml(p.en)}</button>`).join('');
+  row.querySelectorAll('.speak-btn').forEach(b => { b.onclick = () => speak(b.dataset.text, b.dataset.mode, b); });
+}
+
+function pickPhraseIdx(bank, prevIdx) {
+  if (bank.length <= 1) return 0;
+  let idx = prevIdx;
+  while (idx === prevIdx) idx = Math.floor(Math.random() * bank.length);
+  return idx;
+}
+function renderPhraseCard(cardSel, progressSel, bank, idx) {
+  const item = bank[idx];
+  const prog = $(progressSel); if (prog) prog.textContent = `${idx + 1} / ${bank.length}`;
+  const box = $(cardSel);
+  box.innerHTML = `
+    <div class="result" style="margin-bottom:0">
+      <div class="corr">${escapeHtml(item.en)}</div>
+      <div class="fb">${escapeHtml(item.ko)}</div>
+      ${speakButtonsHTML(item.en)}
+    </div>`;
+  bindSpeakButtons(box);
+}
+function nextFiller() { thinkState.fillerIdx = pickPhraseIdx(FILLER_PHRASES, thinkState.fillerIdx); renderPhraseCard('#fillerCard', '#fillerProgress', FILLER_PHRASES, thinkState.fillerIdx); }
+function nextChunk() { thinkState.chunkIdx = pickPhraseIdx(CHUNK_PHRASES, thinkState.chunkIdx); renderPhraseCard('#chunkCard', '#chunkProgress', CHUNK_PHRASES, thinkState.chunkIdx); }
+function nextStarter() { thinkState.starterIdx = pickPhraseIdx(STARTER_PHRASES, thinkState.starterIdx); renderPhraseCard('#starterCard', '#starterProgress', STARTER_PHRASES, thinkState.starterIdx); }
+
+function initThinkTabIfNeeded() {
+  if (!thinkState.challengeQ) pickChallenge(false);
+  if (thinkState.fillerIdx === -1) nextFiller();
+  if (thinkState.chunkIdx === -1) nextChunk();
+  if (thinkState.starterIdx === -1) nextStarter();
+  renderFillerHints();
+  refreshThinkStats();
+}
+
+/* ---------- listening (dictation) ---------- */
+const LEVEL_KO = { easy: '초급', mid: '중급', hard: '고급' };
+let listenState = { current: null, count: 0, sumAcc: 0, best: 0 };
+
+function pickListenSentence() {
+  if (activeRecog) { try { activeRecog.abort(); } catch {} activeRecog = null; }
+  speechSynthesis.cancel();
+  const level = $('#listenLevel').value || 'all';
+  const pool = level === 'all' ? LISTEN_BANK : LISTEN_BANK.filter(s => s.level === level);
+  const prevEn = listenState.current?.en;
+  let next = pool[Math.floor(Math.random() * pool.length)];
+  if (pool.length > 1) while (next.en === prevEn) next = pool[Math.floor(Math.random() * pool.length)];
+  listenState.current = next;
+  $('#listenInput').value = '';
+  $('#listenResult').innerHTML = '';
+  $('#listenLevelTag').textContent = LEVEL_KO[next.level] || '';
+}
+function playListenCurrent(mode) {
+  if (!listenState.current) return;
+  speak(listenState.current.en, mode);
+}
+function checkListenAnswer() {
+  if (!listenState.current) return;
+  const target = listenState.current.en;
+  const said = $('#listenInput').value.trim();
+  if (!said) { toast('먼저 들리는 대로 입력해 보세요'); return; }
+  const A = normWords(target), B = normWords(said);
+  const matched = lcsMatch(A, B);
+  const acc = A.length ? Math.round(matched.size / A.length * 100) : 0;
+  const color = acc >= 85 ? 'var(--good)' : acc >= 60 ? 'var(--warning)' : 'var(--critical)';
+  const words = target.split(/(\s+)/);
+  let wi = 0;
+  const marked = words.map(w => {
+    if (!w.trim()) return w;
+    const hit = matched.has(wi); wi++;
+    return `<b class="${hit?'hit':'miss'}">${escapeHtml(w)}</b>`;
+  }).join('');
+  const msg = acc >= 85 ? '훌륭해요! 정확히 들으셨네요 👏' : acc >= 60 ? '거의 다 왔어요! 밑줄 부분을 다시 들어보세요.' : '천천히 다시 들어볼까요? 🐢 천천히 듣기를 눌러보세요.';
+  $('#listenResult').innerHTML =
+    `<div class="practice" style="margin-top:12px">
+       <div class="p-status">정확도 <span class="p-acc" style="color:${color}">${acc}%</span> · ${msg}</div>
+       <div class="p-target">🎯 정답: ${marked}</div>
+       <div class="p-said">✍️ 내가 입력: "${escapeHtml(said)}"</div>
+     </div>`;
+  listenState.count++;
+  listenState.sumAcc += acc;
+  listenState.best = Math.max(listenState.best, acc);
+  $('#listenCount').textContent = listenState.count;
+  $('#listenAvg').textContent = Math.round(listenState.sumAcc / listenState.count) + '%';
+  $('#listenBest').textContent = listenState.best + '%';
+}
+
+// 쉐도잉: 문장을 듣고, 끝나자마자 자동으로 마이크를 켜서 따라 말한 것을 채점
+function shadowCurrent() {
+  if (!listenState.current) return;
+  if (!SR) { toast('이 브라우저는 음성 인식을 지원하지 않아요 (Chrome/Edge 권장)'); return; }
+  if (!('speechSynthesis' in window)) { toast('이 브라우저는 음성 재생을 지원하지 않아요'); return; }
+  const target = listenState.current.en;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(target);
+  u.lang = 'en-US';
+  const v = voices.find(x => x.name === localStorage.getItem(LS.voice));
+  if (v) u.voice = v;
+  u.rate = 1.0;
+  $('#listenResult').innerHTML = `<div class="practice"><span class="p-status live">🎧 듣는 중… 끝나면 바로 따라 말해보세요</span></div>`;
+  u.onend = () => startShadowRecognition(target);
+  u.onerror = () => { $('#listenResult').innerHTML = ''; };
+  speechSynthesis.speak(u);
+}
+function startShadowRecognition(target) {
+  if (activeRecog) { try { activeRecog.abort(); } catch {} activeRecog = null; }
+  const recog = new SR();
+  activeRecog = recog;
+  recog.lang = 'en-US'; recog.interimResults = false; recog.maxAlternatives = 1;
+  $('#listenResult').innerHTML = `<div class="practice"><span class="p-status live">🔴 따라 말해보세요…</span></div>`;
+  recog.onresult = (e) => {
+    const said = e.results[0][0].transcript;
+    const A = normWords(target), B = normWords(said);
+    const matched = lcsMatch(A, B);
+    const acc = A.length ? Math.round(matched.size / A.length * 100) : 0;
+    const color = acc >= 85 ? 'var(--good)' : acc >= 60 ? 'var(--warning)' : 'var(--critical)';
+    const words = target.split(/(\s+)/);
+    let wi = 0;
+    const marked = words.map(w => {
+      if (!w.trim()) return w;
+      const hit = matched.has(wi); wi++;
+      return `<b class="${hit?'hit':'miss'}">${escapeHtml(w)}</b>`;
+    }).join('');
+    const msg = acc >= 85 ? '완벽해요! 리듬까지 잘 따라했어요 👏' : acc >= 60 ? '좋아요, 밑줄 부분의 억양을 다시 들어보세요.' : '다시 들어보고 천천히 따라 말해볼까요?';
+    $('#listenResult').innerHTML =
+      `<div class="practice">
+         <div class="p-status">쉐도잉 정확도 <span class="p-acc" style="color:${color}">${acc}%</span> · ${msg}</div>
+         <div class="p-target">🎯 ${marked}</div>
+         <div class="p-said">🗣️ 내가 말한 것: "${escapeHtml(said)}"</div>
+       </div>`;
+  };
+  recog.onerror = (e) => {
+    $('#listenResult').innerHTML = `<div class="practice"><span class="p-status">인식 실패: ${e.error === 'not-allowed' ? '마이크 권한을 허용해 주세요.' : e.error === 'no-speech' ? '소리가 들리지 않았어요.' : escapeHtml(e.error)}</span></div>`;
+  };
+  recog.onend = () => { if (activeRecog === recog) activeRecog = null; };
+  try { recog.start(); }
+  catch { $('#listenResult').innerHTML = `<div class="practice"><span class="p-status">잠시 후 다시 시도해 주세요.</span></div>`; }
+}
+
+/* ---------- kids ambient playback ---------- */
+let kidsState = { list: [], idx: 0, lineIdx: 0, playing: false };
+let kidsWakeLock = null;
+async function kidsRequestWakeLock() {
+  try { if ('wakeLock' in navigator) kidsWakeLock = await navigator.wakeLock.request('screen'); } catch {}
+}
+function kidsReleaseWakeLock() {
+  if (kidsWakeLock) { try { kidsWakeLock.release(); } catch {} kidsWakeLock = null; }
+}
+function kidsFilteredList() {
+  const mode = $('#kidsMode').value || 'all';
+  return mode === 'all' ? KIDS_BANK : KIDS_BANK.filter(i => i.type === mode);
+}
+function kidsLoadItem(idx) {
+  const list = kidsFilteredList();
+  if (!list.length) return;
+  kidsState.list = list;
+  kidsState.idx = ((idx % list.length) + list.length) % list.length;
+  kidsState.lineIdx = 0;
+  renderKidsItem();
+}
+function renderKidsItem() {
+  const item = kidsState.list[kidsState.idx];
+  if (!item) return;
+  $('#kidsTitle').textContent = (item.type === 'song' ? '🎵 ' : '💬 ') + item.title;
+  $('#kidsProgress').textContent = `${kidsState.idx + 1} / ${kidsState.list.length}`;
+  $('#kidsLyrics').innerHTML = item.lines.map((l, i) => `<div class="kline" data-i="${i}">${escapeHtml(l)}</div>`).join('');
+}
+function highlightKidsLine(i) {
+  $$('#kidsLyrics .kline').forEach(el => el.classList.toggle('active', +el.dataset.i === i));
+}
+function speakKidsLine() {
+  if (!kidsState.playing) return;
+  const item = kidsState.list[kidsState.idx];
+  if (!item) return;
+  if (kidsState.lineIdx >= item.lines.length) { kidsAdvanceItem(); return; }
+  highlightKidsLine(kidsState.lineIdx);
+  const u = new SpeechSynthesisUtterance(item.lines[kidsState.lineIdx]);
+  u.lang = 'en-US';
+  const v = voices.find(x => x.name === localStorage.getItem(LS.voice));
+  if (v) u.voice = v;
+  u.rate = 0.85;
+  u.pitch = item.type === 'song' ? 1.15 : 1.0;
+  u.onend = () => { if (!kidsState.playing) return; kidsState.lineIdx++; setTimeout(speakKidsLine, 450); };
+  u.onerror = () => { if (!kidsState.playing) return; kidsState.lineIdx++; setTimeout(speakKidsLine, 450); };
+  speechSynthesis.speak(u);
+}
+function kidsAdvanceItem() {
+  const atEnd = kidsState.idx + 1 >= kidsState.list.length;
+  if (atEnd && !$('#kidsLoop').checked) { kidsPause(); return; }
+  kidsLoadItem(atEnd ? 0 : kidsState.idx + 1);
+  if (kidsState.playing) setTimeout(speakKidsLine, 600);
+}
+function kidsPlay() {
+  if (!('speechSynthesis' in window)) { toast('이 브라우저는 음성 재생을 지원하지 않아요'); return; }
+  if (!kidsState.list.length) kidsLoadItem(0);
+  kidsState.playing = true;
+  $('#kidsPlayBtn').textContent = '⏸ 일시정지';
+  kidsRequestWakeLock();
+  speechSynthesis.cancel();
+  speakKidsLine();
+}
+function kidsPause() {
+  kidsState.playing = false;
+  speechSynthesis.cancel();
+  $('#kidsPlayBtn').textContent = '▶ 재생';
+  kidsReleaseWakeLock();
+}
+function kidsToggle() { kidsState.playing ? kidsPause() : kidsPlay(); }
+function kidsNext() { const wasPlaying = kidsState.playing; kidsPause(); kidsLoadItem(kidsState.idx + 1); if (wasPlaying) kidsPlay(); }
+function kidsPrev() { const wasPlaying = kidsState.playing; kidsPause(); kidsLoadItem(kidsState.idx - 1); if (wasPlaying) kidsPlay(); }
+
 /* ---------- result render ---------- */
 function resultHTML(r) {
   const sc = Math.round(r.score ?? 0);
@@ -820,6 +1435,13 @@ function bestGeminiModel(models) {
       || models.find(m => !/preview|exp/i.test(m))
       || models[0] || null;
 }
+// 429(한도 초과) 시: lite ↔ 일반 모델은 무료 할당량이 별도라서, 반대쪽으로 바꿔주면 바로 될 때가 많음
+function altGeminiModelForRateLimit(models, current) {
+  const isLite = /lite/i.test(current);
+  return models.find(m => m !== current && (isLite ? !/lite/i.test(m) : /lite/i.test(m)))
+      || models.find(m => m !== current)
+      || null;
+}
 
 // 설정의 "연결 테스트" 버튼: 사용 가능한 모델을 조회해 드롭다운을 채운다
 async function testGemini() {
@@ -874,10 +1496,17 @@ async function callGemini(sys, userMsg, retried) {
     }
     if (res.status === 400 && /API key not valid/i.test(detail)) throw new Error('Gemini API 키가 올바르지 않아요. 설정을 확인해 주세요.');
     if (res.status === 429) {
+      // 무료 한도 초과: lite/일반 모델은 할당량이 분리돼 있어 자동으로 다른 모델로 한 번 재시도
+      if (!retried) {
+        try {
+          const alt = altGeminiModelForRateLimit(await listGeminiModels(key), model);
+          if (alt) { localStorage.setItem(LS.gmodel, alt); return await callGemini(sys, userMsg, true); }
+        } catch {}
+      }
       const perMin = /per minute|PerMinute/i.test(detail);
       throw new Error(perMin
-        ? '요청이 너무 잦아요(분당 한도). 1분 뒤 다시 시도해 주세요.'
-        : `Gemini 한도(429): 잠시 후 다시 시도하거나 설정 → 연결 테스트로 다른 모델을 골라 보세요. — ${detail || '사유 없음'}`);
+        ? '요청이 너무 잦아요(분당 한도). 다른 모델로 자동 전환을 시도했지만 실패했어요. 1분 뒤 다시 시도해 주세요.'
+        : `Gemini 무료 한도(일일/분당)를 초과했어요. 다른 모델로 자동 전환을 시도했지만 실패했어요. 설정 → 연결 테스트로 다른 모델을 고르거나 내일 다시 시도해 주세요. — ${detail || '사유 없음'}`);
     }
     throw new Error(`Gemini 오류 (${res.status}) ${detail}`);
   }
@@ -1207,7 +1836,7 @@ function renderReview() {
 /* ---------- refresh ---------- */
 function refreshAll() {
   refreshStats(); renderGoal(); renderHistory();
-  updateReviewBadge();
+  updateReviewBadge(); refreshThinkStats();
   if ($('section.page[data-page="progress"]').classList.contains('active')) renderChart();
   if ($('section.page[data-page="report"]').classList.contains('active')) renderReport();
   if ($('section.page[data-page="review"]').classList.contains('active')) renderReview();
@@ -1262,7 +1891,7 @@ function loadTodayIfExists() {
 function exportData() {
   const data = {
     app: 'daily-english-3', version: 1, exportedAt: new Date().toISOString(),
-    history: getHistory(), reviewed: getReviewed(),
+    history: getHistory(), reviewed: getReviewed(), thinkHistory: getThinkHist(),
     settings: {
       goal: localStorage.getItem(LS.goal), remind: localStorage.getItem(LS.remind),
       model: localStorage.getItem(LS.model), mode: localStorage.getItem(LS.mode),
@@ -1290,6 +1919,7 @@ function importData(file) {
     if (!confirm(`백업에서 ${impCount}일치 기록을 불러올까요?\n같은 날짜는 백업 내용으로 덮어씁니다. (현재 기록과 병합)`)) return;
     saveHistory({ ...curH, ...data.history });
     if (data.reviewed) saveReviewed({ ...getReviewed(), ...data.reviewed });
+    if (Array.isArray(data.thinkHistory)) saveThinkHist([...getThinkHist(), ...data.thinkHistory]);
     const s = data.settings || {};
     if (s.goal) localStorage.setItem(LS.goal, s.goal);
     if (s.remind) localStorage.setItem(LS.remind, s.remind);
@@ -1332,7 +1962,7 @@ function init() {
   renderInputs();
   pickPrompt(false);
   $('#todayLabel').textContent = fmtDate(todayKey());
-  refreshStats(); renderGoal(); renderHistory(); updateReviewBadge();
+  refreshStats(); renderGoal(); renderHistory(); updateReviewBadge(); refreshThinkStats();
   loadTodayIfExists();
   checkKeyBanner();
   startReminderClock();
@@ -1347,6 +1977,23 @@ function init() {
   $('#modeSelect').onchange = syncModeFields;
   $('#hideAnswers').onchange = renderReview;
   $('#hideDone').onchange = renderReview;
+  $('#challengeNext').onclick = () => pickChallenge(true);
+  $('#challengeListenBtn').onclick = () => speak(thinkState.challengeQ, 'linked');
+  $('#challengeStartBtn').onclick = startChallengeRecording;
+  $('#fillerNext').onclick = nextFiller;
+  $('#chunkNext').onclick = nextChunk;
+  $('#starterNext').onclick = nextStarter;
+  $('#listenLevel').onchange = pickListenSentence;
+  $('#listenPlayBtn').onclick = () => playListenCurrent('linked');
+  $('#listenSlowBtn').onclick = () => playListenCurrent('standard');
+  $('#listenShadowBtn').onclick = shadowCurrent;
+  $('#listenNextBtn').onclick = pickListenSentence;
+  $('#listenCheckBtn').onclick = checkListenAnswer;
+  $('#listenInput').onkeydown = (e) => { if (e.key === 'Enter') checkListenAnswer(); };
+  $('#kidsMode').onchange = () => { kidsPause(); kidsLoadItem(0); };
+  $('#kidsPlayBtn').onclick = kidsToggle;
+  $('#kidsPrevBtn').onclick = kidsPrev;
+  $('#kidsNextBtn').onclick = kidsNext;
   $('#settingsModal').onclick = (e) => { if (e.target === $('#settingsModal')) closeModal(); };
   $('#installBtn').onclick = async () => {
     if (!deferredPrompt) { toast('브라우저 메뉴의 “홈 화면에 추가”로 설치할 수 있어요'); return; }
@@ -1378,8 +2025,8 @@ function init() {
     toast('저장되었어요 ✓');
   };
   $('#clearData').onclick = () => {
-    if (confirm('모든 학습 기록과 복습 노트를 삭제할까요? 되돌릴 수 없습니다.')) {
-      localStorage.removeItem(LS.hist); localStorage.removeItem(LS.reviewed);
+    if (confirm('모든 학습 기록과 복습 노트, 순발력 훈련 기록을 삭제할까요? 되돌릴 수 없습니다.')) {
+      localStorage.removeItem(LS.hist); localStorage.removeItem(LS.reviewed); localStorage.removeItem(LS.thinkHist);
       closeModal(); refreshAll(); $('#resultCard').style.display = 'none'; $('#results').innerHTML='';
       toast('기록을 삭제했어요');
     }
